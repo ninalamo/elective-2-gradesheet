@@ -3,6 +3,7 @@ using elective_2_gradesheet.Data.Entities;
 using elective_2_gradesheet.Helpers;
 using elective_2_gradesheet.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace elective_2_gradesheet.Services
 {
@@ -14,6 +15,7 @@ namespace elective_2_gradesheet.Services
         Task<PaginatedList<StudentActivityGroupViewModel>> GetStudentGroupsAsync(string searchTerm, int? sectionId, GradingPeriod? period, string sortOrder, int pageIndex, int pageSize);
         // This new method signature was added
         Task UpdateActivityAsync(int studentId, double points, double maxPoints, GradingPeriod period, string tag, string otherTag, string githubLink, string status, int? activityId, string? activityName, int? newId = 0);
+        Task<int> BulkAddMissingActivitiesAsync(int studentId, GradingPeriod gradingPeriod);
     }
 
     public class GradeService : IGradeService
@@ -24,6 +26,94 @@ namespace elective_2_gradesheet.Services
         public GradeService(ApplicationDbContext context)
         {
             _context = context;
+        }
+
+
+        public async Task<int> BulkAddMissingActivitiesAsync(int studentId, GradingPeriod period)
+        {
+            var student = await _context.Students
+                .Include(s => s.Section)
+                .FirstOrDefaultAsync(s => s.Id == studentId);
+
+            if (student == null) return 0;
+
+            // Get all unique activities (ActivityName, Period, MaxPoints, Tag) for the student's section within the specified period.
+            // We include Tag here so we can use it to infer for missing activities.
+            var allUniqueSectionActivities = await _context.Activities
+                .Where(a => a.Student.SectionId == student.SectionId && a.Period == period)
+                .Select(a => new { a.ActivityName, a.Period, a.MaxPoints, a.Tag })
+                .Distinct()
+                .ToListAsync();
+
+            // Get all activities already submitted by the student for that period.
+            var studentSubmittedActivityNames = await _context.Activities
+                .Where(a => a.StudentId == studentId && a.Period == period)
+                .Select(a => a.ActivityName)
+                .ToListAsync();
+
+            // Identify the missing activities by comparing the two lists.
+            var missingActivities = allUniqueSectionActivities
+                .Where(ua => !studentSubmittedActivityNames.Contains(ua.ActivityName))
+                .ToList();
+
+            var newActivities = new List<Activity>();
+
+            foreach (var missingActivity in missingActivities)
+            {
+                string inferredTag = InferTagFromActivityName(missingActivity.ActivityName);
+                double maxPoints = missingActivity.MaxPoints > 0 ? missingActivity.MaxPoints : 100; // Default to 100 if MaxPoints is not set or zero.
+
+                var newActivity = new Activity
+                {
+                    StudentId = student.Id,
+                    ActivityName = missingActivity.ActivityName, // Use the original activity name
+                    MaxPoints = maxPoints,
+                    Points = 0, // Default scores to zero
+                    Status = "Added", // New activities are initially "Missing"
+                    Period = missingActivity.Period,
+                    Tag = inferredTag, // Use the inferred tag
+                    GithubLink = null // Default GitHub link to null
+                };
+                newActivities.Add(newActivity);
+            }
+
+            _context.Activities.AddRange(newActivities);
+            await _context.SaveChangesAsync();
+            return newActivities.Count();
+        }
+
+        // Helper method for smart tagging based on activity name keywords
+        private string InferTagFromActivityName(string activityName)
+        {
+            if (string.IsNullOrEmpty(activityName)) return "Other";
+
+            string lowerName = activityName.ToLower();
+
+            // Updated Regex for 'Assignment' patterns:
+            // 1. "a" followed by one or more digits (e.g., A1, A2, A10)
+            // 2. Or a word followed by underscore and then "a" and digits (e.g., prelim_a3, mid_a1)
+            // 3. Or general keywords for assignments
+            if (Regex.IsMatch(lowerName, @"^a\d+$") ||                      // Matches a1, a2
+                Regex.IsMatch(lowerName, @"\w+_a\d+$") ||                   // Matches prelim_a3, final_a1
+                lowerName.Contains("assignment") || lowerName.Contains("quiz") ||
+                lowerName.Contains("exam") || lowerName.Contains("report") || lowerName.Contains("paper"))
+            {
+                return "Assignment";
+            }
+
+            // Regex for 'Hands-on' patterns:
+            // 1. "lab" followed by a digit (e.g., lab1, lab2)
+            // 2. Or "lab_" followed by a digit (e.g., lab_1, lab_2)
+            // 3. Or general keywords for hands-on activities
+            if (Regex.IsMatch(lowerName, @"^lab\d+$") ||
+                Regex.IsMatch(lowerName, @"^lab_\d+$") ||
+                lowerName.Contains("hands-on") || lowerName.Contains("project") ||
+                lowerName.Contains("activity") || lowerName.Contains("practical"))
+            {
+                return "Hands-on";
+            }
+
+            return "Other";
         }
 
         public async Task<StudentProfileViewModel> GetStudentProfileAsync(int studentId, GradingPeriod? period, string sortOrder)

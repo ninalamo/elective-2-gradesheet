@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Template CSV\" />
     <Folder Include="SQL Scripts\" />
   </ItemGroup>
 

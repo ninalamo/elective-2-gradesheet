@@ -121,5 +121,32 @@ namespace CsvImporter.Controllers
             await _gradeService.UpdateActivityAsync( studentId, points, maxPoints, period, tag, otherTag, githubLink, status, activityId, activityName, newId);
             return RedirectToAction("StudentProfile", new { id = studentId });
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken] // Ensure anti-forgery token is validated
+        public async Task<IActionResult> BulkAddMissingActivities(int studentId, GradingPeriod gradingPeriod)
+        {
+            try
+            {
+                var addedCount = await _gradeService.BulkAddMissingActivitiesAsync(studentId, gradingPeriod);
+
+                if (addedCount > 0)
+                {
+                    // Return JSON for success with count
+                    return Json(new { success = true, message = $"Successfully added {addedCount} missing activities for {gradingPeriod.ToString()}!", type = "success", addedCount = addedCount });
+                }
+                else
+                {
+                    // Return JSON for no activities found (changed to 'warning' type)
+                    return Json(new { success = true, message = $"No missing activities found for {gradingPeriod.ToString()} to add.", type = "warning", addedCount = addedCount });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Return JSON for error
+                return Json(new { success = false, message = $"Error adding missing activities: {ex.Message}", type = "danger", addedCount = 0 });
+            }
+        }
+
     }
 }
