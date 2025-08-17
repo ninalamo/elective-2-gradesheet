@@ -12,6 +12,7 @@ namespace elective_2_gradesheet.Data
 
         public DbSet<Student> Students { get; set; }
         public DbSet<Activity> Activities { get; set; }
+        public DbSet<Section> Sections { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -19,7 +20,11 @@ namespace elective_2_gradesheet.Data
 
             // Add a unique index on StudentNumber to prevent duplicates
             modelBuilder.Entity<Student>()
-                .HasIndex(s => s.StudentNumber)
+                .HasIndex(s => s.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<Section>()
+                .HasIndex(s => new { s.Name, s.SchoolYear })
                 .IsUnique();
         }
     }

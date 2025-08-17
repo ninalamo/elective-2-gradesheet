@@ -11,8 +11,8 @@ using elective_2_gradesheet.Data;
 namespace elective_2_gradesheet.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250817072510_init")]
-    partial class init
+    [Migration("20250817093153_remove-fullname")]
+    partial class removefullname
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -59,6 +59,33 @@ namespace elective_2_gradesheet.Migrations
                     b.ToTable("Activities");
                 });
 
+            modelBuilder.Entity("elective_2_gradesheet.Data.Entities.Section", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("SchoolYear")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name", "SchoolYear")
+                        .IsUnique();
+
+                    b.ToTable("Sections");
+                });
+
             modelBuilder.Entity("elective_2_gradesheet.Data.Entities.Student", b =>
                 {
                     b.Property<int>("Id")
@@ -69,13 +96,9 @@ namespace elective_2_gradesheet.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -83,14 +106,15 @@ namespace elective_2_gradesheet.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("StudentNumber")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("SectionId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StudentNumber")
+                    b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("SectionId");
 
                     b.ToTable("Students");
                 });
@@ -104,6 +128,22 @@ namespace elective_2_gradesheet.Migrations
                         .IsRequired();
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("elective_2_gradesheet.Data.Entities.Student", b =>
+                {
+                    b.HasOne("elective_2_gradesheet.Data.Entities.Section", "Section")
+                        .WithMany("Students")
+                        .HasForeignKey("SectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Section");
+                });
+
+            modelBuilder.Entity("elective_2_gradesheet.Data.Entities.Section", b =>
+                {
+                    b.Navigation("Students");
                 });
 
             modelBuilder.Entity("elective_2_gradesheet.Data.Entities.Student", b =>
