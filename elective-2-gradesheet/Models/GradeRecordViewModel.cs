@@ -1,7 +1,5 @@
 ﻿using CsvHelper.Configuration.Attributes;
-using elective_2_gradesheet.Data.Entities;
 using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace elective_2_gradesheet.Models
 {
@@ -28,29 +26,5 @@ namespace elective_2_gradesheet.Models
         [Name("Max Points")]
         public string MaxPoints { get; set; }
 
-    }
-
-    public class CsvDisplayViewModel
-    {
-        public List<GradeRecordViewModel> GradeRecords { get; set; }
-        public GradingPeriod GradingPeriod { get; set; } = GradingPeriod.Prelim;
-
-        [Required]
-        public int? SectionId { get; set; } = default!;
-
-        public CsvDisplayViewModel()
-        {
-            GradeRecords = new List<GradeRecordViewModel>();
-        }
-    }
-
-    public class ActivityViewModel
-    {
-        public string StudentFullName { get; set; }
-        public string ActivityName { get; set; }
-        public string GradingPeriod { get; set; }
-        public string Status { get; set; }
-        public double Points { get; set; }
-        public double MaxPoints { get; set; }
     }
 }

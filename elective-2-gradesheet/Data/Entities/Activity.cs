@@ -9,6 +9,8 @@ namespace elective_2_gradesheet.Data.Entities
         [Key]
         public int Id { get; set; }
 
+        public string? Tag { get; set; } = string.Empty;
+
         [Required]
         public GradingPeriod Period { get; set; }
 

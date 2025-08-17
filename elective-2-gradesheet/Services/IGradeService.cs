@@ -8,9 +8,11 @@ namespace elective_2_gradesheet.Services
 {
     public interface IGradeService
     {
-        Task<PaginatedList<ActivityViewModel>> GetActivitiesAsync(string searchTerm, int pageIndex, int pageSize);
+        Task<PaginatedList<ActivityViewModel>> GetActivitiesAsync(string searchTerm, int? sectionId, GradingPeriod? period, string sortOrder, int pageIndex, int pageSize);
 
         Task ProcessAndSaveGradesAsync(CsvDisplayViewModel model);
+        Task<List<Section>> GetActiveSectionsAsync();
+        Task<StudentProfileViewModel> GetStudentProfileAsync(int studentId, GradingPeriod? period, string sortOrder);
     }
 
     public class GradeService : IGradeService
@@ -23,40 +25,103 @@ namespace elective_2_gradesheet.Services
             _context = context;
         }
 
-
-        public async Task<PaginatedList<ActivityViewModel>> GetActivitiesAsync(string searchTerm, int pageIndex, int pageSize)
+        public async Task<StudentProfileViewModel> GetStudentProfileAsync(int studentId, GradingPeriod? period, string sortOrder)
         {
-            var query = _context.Activities.Include(a => a.Student).AsQueryable();
+            var student = await _context.Students
+                .Include(s => s.Section)
+                .FirstOrDefaultAsync(s => s.Id == studentId);
 
+            if (student == null) return null;
+
+            var query = _context.Activities
+                .Where(a => a.StudentId == studentId)
+                .AsQueryable();
+
+            if (period.HasValue)
+            {
+                query = query.Where(a => a.Period == period.Value);
+            }
+
+            query = sortOrder switch
+            {
+                "period_desc" => query.OrderByDescending(a => a.Period),
+                _ => query.OrderBy(a => a.Period),
+            };
+
+            var activities = await query.Select(a => new ActivityViewModel
+            {
+                ActivityName = a.ActivityName,
+                GradingPeriod = a.Period.ToString(),
+                Status = a.Status,
+                Points = a.Points,
+                MaxPoints = a.MaxPoints
+            }).ToListAsync();
+
+            // The calculation logic is now here, inside the service.
+            var totalPoints = activities.Sum(a => a.Points);
+            var totalMaxPoints = activities.Sum(a => a.MaxPoints);
+
+            return new StudentProfileViewModel
+            {
+                StudentId = student.Id,
+                StudentFullName = student.GetFullName(),
+                SectionName = student.Section.Name,
+                Activities = activities,
+                CurrentPeriod = period,
+                CurrentSort = sortOrder,
+              
+            };
+        }
+
+        public async Task<PaginatedList<ActivityViewModel>> GetActivitiesAsync(string searchTerm, int? sectionId, GradingPeriod? period, string sortOrder, int pageIndex, int pageSize)
+        {
+            var query = _context.Activities
+                .Include(a => a.Student)
+                .ThenInclude(s => s.Section)
+                .AsQueryable();
+
+            // --- Filtering ---
             if (!string.IsNullOrEmpty(searchTerm))
             {
-                // This is the corrected filtering logic.
-                // Instead of converting the enum to a string in the database,
-                // we check the search term against the known string values of the enum.
-                // This approach is fully translatable to SQL.
-                query = query.Where(a =>
-                    a.Student.FirstName.Contains(searchTerm) ||
-                    a.Student.LastName.Contains(searchTerm) ||
-                    a.ActivityName.Contains(searchTerm) ||
-                    (a.Period == GradingPeriod.Prelim && "PRELIM".Contains(searchTerm.ToUpper())) ||
-                    (a.Period == GradingPeriod.Midterm && "MIDTERM".Contains(searchTerm.ToUpper())) ||
-                    (a.Period == GradingPeriod.PreFinals && "PREFINAL".Contains(searchTerm.ToUpper())) ||
-                    (a.Period == GradingPeriod.Finals && "FINALS".Contains(searchTerm.ToUpper()))
-                );
+                query = query.Where(a => a.Student.FirstName.Contains(searchTerm) ||
+                                       a.Student.LastName.Contains(searchTerm) ||
+                                       a.ActivityName.Contains(searchTerm));
             }
+
+            if (sectionId.HasValue)
+            {
+                query = query.Where(a => a.Student.SectionId == sectionId.Value);
+            }
+
+            if (period.HasValue)
+            {
+                query = query.Where(a => a.Period == period.Value);
+            }
+
+            // --- Sorting ---
+            query = sortOrder switch
+            {
+                "name_desc" => query.OrderByDescending(a => a.Student.LastName),
+                "Section" => query.OrderBy(a => a.Student.Section.Name),
+                "section_desc" => query.OrderByDescending(a => a.Student.Section.Name),
+                _ => query.OrderBy(a => a.Student.LastName),// Default sort
+            };
 
             var activityViewModels = query.Select(a => new ActivityViewModel
             {
+                StudentId = a.Student.Id,
                 StudentFullName = a.Student.GetFullName(),
                 ActivityName = a.ActivityName,
                 Status = a.Status,
                 Points = a.Points,
                 MaxPoints = a.MaxPoints,
-                GradingPeriod = a.Period.ToString() // ToString() is safe here because it runs after the data is fetched
+                GradingPeriod = a.Period.ToString(),
+                SectionName = a.Student.Section.Name
             });
 
             return await PaginatedList<ActivityViewModel>.CreateAsync(activityViewModels.AsNoTracking(), pageIndex, pageSize);
         }
+
 
         public async Task ProcessAndSaveGradesAsync(CsvDisplayViewModel model)
         {
@@ -107,13 +172,19 @@ namespace elective_2_gradesheet.Services
                     MaxPoints = double.TryParse(record.MaxPoints, out var mp) ? mp : 0,
                     Points = points,
                     Status = record.Status,
-                    Period = model.GradingPeriod
+                    Period = model.GradingPeriod,
+                    Tag = model.Tag ?? string.Empty // Use the tag from the model or default to empty
                 };
                 _context.Activities.Add(activity);
             }
 
             // Save all the newly created activities in a single transaction.
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<List<Section>> GetActiveSectionsAsync()
+        {
+            return await _context.Sections.Where(s => s.IsActive).ToListAsync();
         }
     }
 }
