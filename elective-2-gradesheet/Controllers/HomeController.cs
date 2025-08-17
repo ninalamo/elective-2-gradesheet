@@ -77,10 +77,9 @@ namespace CsvImporter.Controllers
             ViewData["CurrentSort"] = sortOrder;
             ViewData["NameSortParm"] = string.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
             ViewData["SectionSortParm"] = sortOrder == "Section" ? "section_desc" : "Section";
-            ViewData["Sections"] = _context.Sections.AsNoTracking().Select(s => new SelectListItem { Text = s.Name, Value = s.Id.ToString() }).ToArray();
 
-            // Call the service with all the filter and sort parameters
-            var activities = await _gradeService.GetActivitiesAsync(searchString, sectionId, period, sortOrder, pageNumber ?? 1, 10);
+            // Call the correct service method to get student groups
+            var studentGroups = await _gradeService.GetStudentGroupsAsync(searchString, sectionId, period, sortOrder, pageNumber ?? 1, 10);
 
             // Get the list of sections to populate the filter dropdown
             var sections = await _gradeService.GetActiveSectionsAsync();
@@ -88,7 +87,7 @@ namespace CsvImporter.Controllers
             // Create the ViewModel that holds all the data for the view
             var viewModel = new RecordsViewModel
             {
-                Activities = activities,
+                StudentGroups = studentGroups, // Assign the result directly
                 Sections = sections.Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Name }),
                 CurrentSearch = searchString,
                 CurrentSectionId = sectionId,
@@ -98,6 +97,7 @@ namespace CsvImporter.Controllers
 
             return View(viewModel);
         }
+
 
         public async Task<IActionResult> StudentProfile(int id, GradingPeriod? period, string sortOrder)
         {
@@ -112,6 +112,14 @@ namespace CsvImporter.Controllers
             }
 
             return View(viewModel);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateActivity( int studentId, double points, double maxPoints, GradingPeriod period, string tag, string otherTag, string githubLink, string status, int? activityId = default, string activityName = "", int? newId = 0)
+        {
+            // The UpdateActivityAsync method in the service will handle the logic
+            await _gradeService.UpdateActivityAsync( studentId, points, maxPoints, period, tag, otherTag, githubLink, status, activityId, activityName, newId);
+            return RedirectToAction("StudentProfile", new { id = studentId });
         }
     }
 }

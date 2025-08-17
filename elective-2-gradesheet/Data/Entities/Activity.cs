@@ -4,6 +4,13 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace elective_2_gradesheet.Data.Entities
 {
+    public enum ActivityTag
+    {
+        Assignment,
+        HandsOn,
+        Other
+    }
+
     public class Activity
     {
         [Key]
@@ -26,6 +33,8 @@ namespace elective_2_gradesheet.Data.Entities
         public double MaxPoints { get; set; }
 
         public double Points { get; set; }
+        public string? GithubLink { get; set; } = string.Empty;
+       
 
         [Required]
         public string Status { get; set; }
