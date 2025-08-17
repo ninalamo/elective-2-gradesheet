@@ -1,22 +1,350 @@
+/* General Body and HTML */
 html {
-  font-size: 14px;
+    font-size: 14px;
+    position: relative;
+    min-height: 100%;
 }
 
 @media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
+    html {
+        font-size: 15px; /* Slightly reduced base font size */
+    }
 }
 
 body {
-  margin-bottom: 60px;
+    margin-bottom: 60px;
+    background-color: #f0f2f5; /* Light gray background for a clean base */
+    font-family: 'Inter', sans-serif; /* Keep Inter font */
+    color: #333333; /* Darker gray for body text */
+}
+
+/* Focus States */
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 0.1rem rgba(60, 179, 113, 0.2), 0 0 0 0.25rem rgba(60, 179, 113, 0.3); /* Focus ring based on a subtle green */
+}
+
+/* Footer */
+.footer {
+    position: relative;
+    bottom: 0;
+    width: 100%;
+    white-space: nowrap;
+    line-height: 60px;
+    background-color: #e9ecef;
+    border-top: 1px solid #dee2e6;
+    text-align: center;
+    font-size: 0.85rem; /* Smaller footer text */
+    color: #6c757d;
+}
+
+/* Custom Navbar Styles */
+.bg-dark-gradient {
+    background: linear-gradient(to right, #1a1a1a, #282828); /* Dark, almost black gradient for a sleek look */
+    border-color: rgba(0,0,0,0.1) !important;
+}
+
+.navbar-brand {
+    font-weight: 600;
+    color: #1DB954 !important; /* Spotify green for brand */
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem; /* Sharper corners */
+    transition: transform 0.2s ease-in-out;
+}
+
+    .navbar-brand:hover {
+        transform: scale(1.02);
+    }
+
+.navbar-nav .nav-link {
+    color: #b3b3b3 !important; /* Lighter gray for nav links */
+    padding: 0.4rem 0.8rem !important;
+    border-radius: 0.25rem; /* Sharper corners */
+    transition: background-color 0.3s ease, color 0.3s ease;
+    font-size: 0.95rem;
+}
+
+    .navbar-nav .nav-link:hover, .navbar-nav .nav-link.active {
+        background-color: rgba(255, 255, 255, 0.08); /* Subtle hover/active on dark background */
+        color: #ffffff !important;
+    }
+
+.rounded-bottom-lg {
+    border-bottom-left-radius: 0.5rem !important; /* Less pronounced rounding */
+    border-bottom-right-radius: 0.5rem !important;
+}
+
+/* General Card and Button Enhancements */
+.card {
+    border-radius: 0.375rem; /* Slightly rounded, more corporate */
+    box-shadow: 0 0.15rem 0.4rem rgba(0, 0, 0, 0.03); /* Even softer, lighter shadow */
+    overflow: hidden;
+    border: 1px solid #dcdcdc; /* Subtle border */
+}
+
+.card-header {
+    border-top-left-radius: 0.375rem !important;
+    border-top-right-radius: 0.375rem !important;
+    background-color: #36454F; /* Charcoal gray for card headers */
+    color: white;
+    font-weight: 600;
+    padding: 0.8rem 1.25rem; /* Reduced padding */
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+    .card-header h1, .card-header h2, .card-header h3, .card-header h4, .card-header h5 {
+        color: white !important;
+        font-size: 1.15rem; /* Smaller heading size */
+    }
+
+/* Button Styles */
+.btn {
+    border-radius: 0.25rem; /* Sharper corners for general buttons */
+    transition: all 0.2s ease;
+    font-weight: 500;
+    padding: 0.5rem 0.9rem; /* Reduced padding */
+    font-size: 0.85rem; /* Smaller button text */
+}
+
+.btn-primary {
+    background-color: #1DB954; /* Spotify green */
+    border-color: #1DB954;
+    color: #ffffff;
+}
+
+    .btn-primary:hover {
+        background-color: #179a45; /* Darker Spotify green */
+        border-color: #179a45;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(29, 185, 84, 0.2);
+    }
+
+.btn-warning {
+    background-color: #ff9800; /* Standard orange for warning */
+    border-color: #ff9800;
+    color: #333333; /* Dark text for contrast */
+}
+
+    .btn-warning:hover {
+        background-color: #e68a00;
+        border-color: #e68a00;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(255, 152, 0, 0.2);
+    }
+
+.btn-success {
+    background-color: #4CAF50; /* Standard green for success */
+    border-color: #4CAF50;
+    color: #ffffff;
+}
+
+    .btn-success:hover {
+        background-color: #45a049;
+        border-color: #45a049;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+    }
+
+.btn-info {
+    background-color: #03A9F4; /* Standard light blue for info */
+    border-color: #03A9F4;
+    color: #ffffff;
+}
+
+    .btn-info:hover {
+        background-color: #039BE5;
+        border-color: #039BE5;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(3, 169, 244, 0.2);
+    }
+
+.btn-secondary {
+    background-color: #6c757d; /* Standard secondary gray */
+    border-color: #6c757d;
+    color: #ffffff;
+}
+
+    .btn-secondary:hover {
+        background-color: #5a6268;
+        border-color: #5a6268;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(108, 117, 125, 0.15);
+    }
+
+.btn-outline-primary {
+    border-radius: 0.25rem;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+    color: #1DB954; /* Spotify green outline */
+    border-color: #1DB954;
+}
+
+    .btn-outline-primary:hover {
+        background-color: #1DB954;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(29, 185, 84, 0.1);
+    }
+
+/* Form Control Enhancements */
+.form-control, .form-select {
+    border-radius: 0.25rem;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #ced4da;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    font-size: 0.85rem;
+}
+
+    .form-control:focus, .form-select:focus {
+        border-color: #1DB954; /* Focus border in Spotify green */
+        box-shadow: 0 0 0 0.1rem rgba(29, 185, 84, 0.15); /* Softer shadow based on Spotify green */
+    }
+
+/* Table Enhancements */
+.table {
+    border-radius: 0.25rem;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
+
+    .table thead.thead-dark th {
+        background-color: #36454F; /* Charcoal gray for table headers */
+        color: white;
+        border-color: #4a5560;
+        padding: 0.7rem 0.9rem;
+        font-size: 0.85rem;
+    }
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #fcfcfc; /* Very light stripe */
+}
+
+.table-hover tbody tr:hover {
+    background-color: #eef1f4; /* Subtle hover effect */
+}
+
+.table-bordered th, .table-bordered td {
+    border-color: #e9ecef;
+}
+
+/* Badges */
+.badge {
+    border-radius: 50rem !important; /* Keep full pill shape */
+    padding: 0.3em 0.6em;
+    font-weight: 600;
+    font-size: 0.75em;
+}
+
+/* Toast Notifications - Adjusted to corporate palette */
+.toast-container {
+    z-index: 1080;
+}
+
+.toast {
+    border-radius: 0.375rem;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.08);
+    background-color: #fff;
+    color: #212529;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.toast-header {
+    border-bottom: none;
+    background-color: transparent;
+    color: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.toast-body {
+    font-size: 0.85rem;
+}
+
+/* Corporate Toast Colors */
+.toast.text-bg-success .toast-header {
+    background-color: #1DB954;
+    color: white;
+}
+/* Spotify green */
+.toast.text-bg-info .toast-header {
+    background-color: #03A9F4;
+    color: white;
+}
+/* Sky blue info */
+.toast.text-bg-warning .toast-header {
+    background-color: #ff9800;
+    color: white;
+}
+/* Orange warning */
+.toast.text-bg-danger .toast-header {
+    background-color: #f44336;
+    color: white;
+}
+/* Red danger */
+
+.toast.text-bg-success {
+    background-color: #e6f6ed;
+    color: #179a45;
+}
+
+.toast.text-bg-info {
+    background-color: #e1f5fe;
+    color: #0288d1;
+}
+
+.toast.text-bg-warning {
+    background-color: #fff3e0;
+    color: #e65100;
+}
+
+.toast.text-bg-danger {
+    background-color: #ffebee;
+    color: #d32f2f;
+}
+
+/* Spinner inside toast - ensure it's visible */
+.toast .spinner-border {
+    color: inherit;
+}
+
+/* Utility classes for spacing and shadows */
+.mb-3 {
+    margin-bottom: 0.75rem !important;
+}
+
+.mt-3 {
+    margin-top: 0.75rem !important;
+}
+
+.py-3 {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+}
+
+.px-4 {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+}
+
+.rounded-md {
+    border-radius: 0.25rem !important;
+}
+
+.rounded-lg {
+    border-radius: 0.375rem !important;
+}
+
+.rounded-pill {
+    border-radius: 50rem !important;
+}
+
+.shadow-sm {
+    box-shadow: 0 .1rem .2rem rgba(0,0,0,.04) !important;
+}
+
+.shadow-lg {
+    box-shadow: 0 0.3rem 0.8rem rgba(0,0,0,.06) !important;
+}
+
+.fw-bold {
+    font-weight: 600 !important;
 }

@@ -32,6 +32,8 @@ namespace CsvImporter.Controllers
             return View(model);
         }
 
+        public IActionResult Privacy() => View();
+
         [HttpPost]
         // The signature is changed to accept the full CsvDisplayViewModel from the form.
         // This model will contain the selected GradingPeriod.

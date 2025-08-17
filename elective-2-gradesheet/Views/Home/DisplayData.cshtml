@@ -5,48 +5,55 @@
 }
 
 <div class="container mt-5">
-    <h2 class="mb-4">Uploaded Gradebook Data</h2>
-
-    @if (Model.Any())
-    {
-        <div class="table-responsive">
-            <table class="table table-striped table-bordered">
-                <thead class="thead-dark">
-                    <tr>
-                        <th>Last Name</th>
-                        <th>First Name</th>
-                        <th>Email</th>
-                        <th>Activity Name</th>
-                        <th>Status</th>
-                        <th>Points</th>
-                        <th>Max Points</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model)
-                    {
-                        <tr>
-                            <td>@item.LastName</td>
-                            <td>@item.FirstName</td>
-                            <td>@item.Email</td>
-                            <td>@item.ActivityName</td>
-                            <td>@item.Status</td>
-                            <td>@item.Points</td>
-                            <td>@item.MaxPoints</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+    <div class="card shadow-md mb-4 rounded-lg">
+        <div class="card-header bg-primary text-white text-center py-2 rounded-top-lg">
+            <h4 class="mb-0"><i class="fas fa-file-import me-2"></i> Uploaded Gradebook Data Preview</h4>
         </div>
-    }
-    else
-    {
-        <div class="alert alert-warning" role="alert">
-            No data was found in the uploaded file, or the file format was incorrect.
-        </div>
-    }
+        <div class="card-body p-4">
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-striped table-bordered table-hover">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Last Name</th>
+                                <th>First Name</th>
+                                <th>Email</th>
+                                <th>Activity Name</th>
+                                <th>Status</th>
+                                <th>Points</th>
+                                <th>Max Points</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td>@item.LastName</td>
+                                    <td>@item.FirstName</td>
+                                    <td>@item.Email</td>
+                                    <td>@item.ActivityName</td>
+                                    <td>@item.Status</td>
+                                    <td>@item.Points</td>
+                                    <td>@item.MaxPoints</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning text-center rounded-md" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i> No data was found in the uploaded file, or the file format was incorrect.
+                </div>
+            }
 
-    <div class="mt-4">
-        <a asp-action="Index" class="btn btn-secondary">Upload Another File</a>
+            <div class="mt-4 text-center">
+                <a asp-action="Index" class="btn btn-secondary rounded-pill px-3 shadow-sm">
+                    <i class="fas fa-upload me-2"></i> Upload Another File
+                </a>
+            </div>
+        </div>
     </div>
 </div>
