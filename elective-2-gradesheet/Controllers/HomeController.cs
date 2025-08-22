@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using elective_2_gradesheet.Data;
 using elective_2_gradesheet.Data.Entities;
@@ -95,9 +96,9 @@ namespace CsvImporter.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateActivity( int studentId, double points, double maxPoints, GradingPeriod period, string? tag = "", string? otherTag = "", string? githubLink = "", string? status = "Added", int? activityId = default, string activityName = "", int? newId = 0)
+        public async Task<IActionResult> UpdateActivity(int studentId, double points, double maxPoints, GradingPeriod period, string? tag = "", string? otherTag = "", string? githubLink = "", string? status = "Added", int? activityId = default, string activityName = "", int? newId = 0)
         {
-            await _gradeService.UpdateActivityAsync( studentId, points, maxPoints, period, tag, otherTag, githubLink, status, activityId, activityName, newId);
+            await _gradeService.UpdateActivityAsync(studentId, points, maxPoints, period, tag, otherTag, githubLink, status, activityId, activityName, newId);
             return RedirectToAction("StudentProfile", new { id = studentId });
         }
 
@@ -123,7 +124,7 @@ namespace CsvImporter.Controllers
             }
         }
 
-       [HttpPost]
+        [HttpPost]
         public async Task<IActionResult> ScoreActivity([FromForm] IFormFileCollection files, [FromForm] string rubricJson, [FromForm] string[] filePaths)
         {
             if (files == null || files.Count == 0)
@@ -142,7 +143,7 @@ namespace CsvImporter.Controllers
                 var scoringResults = new List<ScoringResult>();
                 var totalScore = 0;
                 var fileContents = new List<FileContent>();
-                
+
                 for (int i = 0; i < files.Count; i++)
                 {
                     using (var reader = new StreamReader(files[i].OpenReadStream()))
@@ -154,33 +155,34 @@ namespace CsvImporter.Controllers
                 foreach (var item in rubric)
                 {
                     var criterionMet = false;
+                    var proof = "N/A";
+                    var fileName = "N/A";
+
                     foreach (var filePattern in item.Files)
                     {
                         var regex = new Regex(WildcardToRegex(filePattern));
                         var relevantFiles = fileContents.Where(f => !string.IsNullOrEmpty(f.Path) && regex.IsMatch(f.Path.Replace("\\", "/"))).ToList();
-                        
+
                         foreach (var file in relevantFiles)
                         {
-                            string proof = "";
+                            var normalizedFileContent = Regex.Replace(file.Content, @"\s+", "").ToLower();
                             var allKeywordsFound = item.Keywords.All(keyword => {
-                                var found = file.Content.Contains(keyword);
-                                if (found && string.IsNullOrEmpty(proof))
-                                {
-                                    proof = GetLineWithKeyword(file.Content, keyword);
-                                }
-                                return found;
+                                var normalizedKeyword = Regex.Replace(keyword, @"\s+", "").ToLower();
+                                return normalizedFileContent.Contains(normalizedKeyword);
                             });
 
                             if (allKeywordsFound)
                             {
                                 totalScore += item.Points;
-                                scoringResults.Add(new ScoringResult { FileName = file.Name, Criterion = item.Name, Points = item.Points, Proof = proof });
+                                proof = GetLineWithKeyword(file.Content, item.Keywords.First());
+                                fileName = file.Name;
                                 criterionMet = true;
-                                break; 
+                                break;
                             }
                         }
                         if (criterionMet) break;
                     }
+                    scoringResults.Add(new ScoringResult { FileName = fileName, Criterion = item.Name, Points = criterionMet ? item.Points : 0, Proof = proof, Met = criterionMet });
                 }
 
                 return Ok(new { totalScore, results = scoringResults });
@@ -194,7 +196,7 @@ namespace CsvImporter.Controllers
         private string GetLineWithKeyword(string content, string keyword)
         {
             var lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-            return lines.FirstOrDefault(line => line.Contains(keyword))?.Trim() ?? "";
+            return lines.FirstOrDefault(line => line.ToLower().Contains(keyword.ToLower()))?.Trim() ?? "";
         }
 
         public static string WildcardToRegex(string pattern)
@@ -223,6 +225,9 @@ namespace CsvImporter.Controllers
         public string FileName { get; set; }
         public string Criterion { get; set; }
         public int Points { get; set; }
+        [JsonPropertyName("proof")]
         public string Proof { get; set; }
+        [JsonPropertyName("met")]
+        public bool Met { get; set; }
     }
 }
