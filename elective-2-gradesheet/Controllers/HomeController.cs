@@ -1,4 +1,6 @@
-
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using elective_2_gradesheet.Data;
 using elective_2_gradesheet.Data.Entities;
 using elective_2_gradesheet.Models;
@@ -35,8 +37,6 @@ namespace CsvImporter.Controllers
         public IActionResult Privacy() => View();
 
         [HttpPost]
-        // The signature is changed to accept the full CsvDisplayViewModel from the form.
-        // This model will contain the selected GradingPeriod.
         public async Task<IActionResult> Upload(IFormFile file, CsvDisplayViewModel model)
         {
             ViewBag.Sections = _context.Sections
@@ -52,18 +52,8 @@ namespace CsvImporter.Controllers
             try
             {
                 var records = _csvParsingService.ParseGradesCsv(file).ToList();
-
                 model.GradeRecords = records;
-                
-
-                // 1. Pass the selected GradingPeriod from the model to the service.
                 await _gradeService.ProcessAndSaveGradesAsync(model);
-
-                // 2. Convert the GradingPeriod enum to a string for display.
-                var tag = model.GradingPeriod.ToString().ToUpper();
-
-               
-
                 return View("Index", model);
             }
             catch (Exception ex)
@@ -75,28 +65,20 @@ namespace CsvImporter.Controllers
 
         public async Task<IActionResult> Records(string searchString, int? sectionId, GradingPeriod? period, string sortOrder, int? pageNumber)
         {
-            // Set up ViewData for the sorting links in the table header
             ViewData["CurrentSort"] = sortOrder;
             ViewData["NameSortParm"] = string.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
             ViewData["SectionSortParm"] = sortOrder == "Section" ? "section_desc" : "Section";
-
-            // Call the correct service method to get student groups
             var studentGroups = await _gradeService.GetStudentGroupsAsync(searchString, sectionId, period, sortOrder, pageNumber ?? 1, 10);
-
-            // Get the list of sections to populate the filter dropdown
             var sections = await _gradeService.GetActiveSectionsAsync();
-
-            // Create the ViewModel that holds all the data for the view
             var viewModel = new RecordsViewModel
             {
-                StudentGroups = studentGroups, // Assign the result directly
+                StudentGroups = studentGroups,
                 Sections = sections.Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Name }),
                 CurrentSearch = searchString,
                 CurrentSectionId = sectionId,
                 CurrentPeriod = period,
                 CurrentSort = sortOrder
             };
-
             return View(viewModel);
         }
 
@@ -105,50 +87,147 @@ namespace CsvImporter.Controllers
         {
             ViewData["CurrentSort"] = sortOrder;
             ViewData["PeriodSortParm"] = string.IsNullOrEmpty(sortOrder) ? "period_desc" : "";
-
             var viewModel = await _gradeService.GetStudentProfileAsync(id, period, sortOrder);
-
             if (viewModel == null)
             {
                 return NotFound();
             }
-
             return View(viewModel);
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateActivity( int studentId, double points, double maxPoints, GradingPeriod period, string tag, string otherTag, string githubLink, string status, int? activityId = default, string activityName = "", int? newId = 0)
+        public async Task<IActionResult> UpdateActivity(int studentId, double points, double maxPoints, GradingPeriod period, string? tag = "", string? otherTag = "", string? githubLink = "", string? status = "Added", int? activityId = default, string activityName = "", int? newId = 0)
         {
-            // The UpdateActivityAsync method in the service will handle the logic
-            await _gradeService.UpdateActivityAsync( studentId, points, maxPoints, period, tag, otherTag, githubLink, status, activityId, activityName, newId);
+            await _gradeService.UpdateActivityAsync(studentId, points, maxPoints, period, tag, otherTag, githubLink, status, activityId, activityName, newId);
             return RedirectToAction("StudentProfile", new { id = studentId });
         }
 
         [HttpPost]
-        [ValidateAntiForgeryToken] // Ensure anti-forgery token is validated
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> BulkAddMissingActivities(int studentId, GradingPeriod gradingPeriod)
         {
             try
             {
                 var addedCount = await _gradeService.BulkAddMissingActivitiesAsync(studentId, gradingPeriod);
-
                 if (addedCount > 0)
                 {
-                    // Return JSON for success with count
-                    return Json(new { success = true, message = $"Successfully added {addedCount} missing activities for {gradingPeriod.ToString()}!", type = "success", addedCount = addedCount });
+                    return Json(new { success = true, message = $"Successfully added {addedCount} missing activities for {gradingPeriod.ToString()}!", type = "success", addedCount });
                 }
                 else
                 {
-                    // Return JSON for no activities found (changed to 'warning' type)
-                    return Json(new { success = true, message = $"No missing activities found for {gradingPeriod.ToString()} to add.", type = "warning", addedCount = addedCount });
+                    return Json(new { success = true, message = $"No missing activities found for {gradingPeriod.ToString()} to add.", type = "warning", addedCount });
                 }
             }
             catch (Exception ex)
             {
-                // Return JSON for error
                 return Json(new { success = false, message = $"Error adding missing activities: {ex.Message}", type = "danger", addedCount = 0 });
             }
         }
 
+        [HttpPost]
+        public async Task<IActionResult> ScoreActivity([FromForm] IFormFileCollection files, [FromForm] string rubricJson, [FromForm] string[] filePaths)
+        {
+            if (files == null || files.Count == 0)
+            {
+                return BadRequest(new { message = "Please upload files to score." });
+            }
+
+            if (string.IsNullOrEmpty(rubricJson))
+            {
+                return BadRequest(new { message = "Please provide a rubric." });
+            }
+
+            try
+            {
+                var rubric = JsonSerializer.Deserialize<List<RubricItem>>(rubricJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                var scoringResults = new List<ScoringResult>();
+                var totalScore = 0;
+                var fileContents = new List<FileContent>();
+
+                for (int i = 0; i < files.Count; i++)
+                {
+                    using (var reader = new StreamReader(files[i].OpenReadStream()))
+                    {
+                        fileContents.Add(new FileContent { Name = files[i].FileName, Path = filePaths[i], Content = await reader.ReadToEndAsync() });
+                    }
+                }
+
+                foreach (var item in rubric)
+                {
+                    var criterionMet = false;
+                    var proof = "N/A";
+                    var fileName = "N/A";
+
+                    foreach (var filePattern in item.Files)
+                    {
+                        var regex = new Regex(WildcardToRegex(filePattern));
+                        var relevantFiles = fileContents.Where(f => !string.IsNullOrEmpty(f.Path) && regex.IsMatch(f.Path.Replace("\\", "/"))).ToList();
+
+                        foreach (var file in relevantFiles)
+                        {
+                            var normalizedFileContent = Regex.Replace(file.Content, @"\s+", "").ToLower();
+                            var allKeywordsFound = item.Keywords.All(keyword => {
+                                var normalizedKeyword = Regex.Replace(keyword, @"\s+", "").ToLower();
+                                return normalizedFileContent.Contains(normalizedKeyword);
+                            });
+
+                            if (allKeywordsFound)
+                            {
+                                totalScore += item.Points;
+                                proof = GetLineWithKeyword(file.Content, item.Keywords.First());
+                                fileName = file.Name;
+                                criterionMet = true;
+                                break;
+                            }
+                        }
+                        if (criterionMet) break;
+                    }
+                    scoringResults.Add(new ScoringResult { FileName = fileName, Criterion = item.Name, Points = criterionMet ? item.Points : 0, Proof = proof, Met = criterionMet });
+                }
+
+                return Ok(new { totalScore, results = scoringResults });
+            }
+            catch (JsonException)
+            {
+                return BadRequest(new { message = "Invalid JSON format in rubric." });
+            }
+        }
+
+        private string GetLineWithKeyword(string content, string keyword)
+        {
+            var lines = content.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+            return lines.FirstOrDefault(line => line.ToLower().Contains(keyword.ToLower()))?.Trim() ?? "";
+        }
+
+        public static string WildcardToRegex(string pattern)
+        {
+            return Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
+        }
+    }
+
+    public class RubricItem
+    {
+        public string Name { get; set; }
+        public int Points { get; set; }
+        public List<string> Keywords { get; set; }
+        public List<string> Files { get; set; }
+    }
+
+    public class FileContent
+    {
+        public string Name { get; set; }
+        public string Path { get; set; }
+        public string Content { get; set; }
+    }
+
+    public class ScoringResult
+    {
+        public string FileName { get; set; }
+        public string Criterion { get; set; }
+        public int Points { get; set; }
+        [JsonPropertyName("proof")]
+        public string Proof { get; set; }
+        [JsonPropertyName("met")]
+        public bool Met { get; set; }
     }
 }

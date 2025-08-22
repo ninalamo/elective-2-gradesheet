@@ -1,0 +1,92 @@
+.tree-container {
+    list-style-type: none;
+    padding-left: 20px;
+    margin-bottom: 1rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.25rem;
+    padding: 10px;
+    max-height: 200px; /* Added max-height for better layout */
+    overflow-y: auto; /* Added scroll for overflow */
+}
+
+.tree-node .node-name {
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 0.2rem;
+}
+
+    .tree-node .node-name:hover {
+        background-color: #f0f0f0;
+    }
+
+.tree-node.node-file .node-name {
+    cursor: default;
+}
+
+.tree-node .node-name::before {
+    content: '📁';
+    margin-right: 5px;
+}
+
+.tree-node.node-file .node-name::before {
+    content: '📄';
+    margin-right: 5px;
+}
+
+.tree-node .children {
+    display: none;
+}
+
+.tree-node.expanded > .children {
+    display: block;
+}
+
+.remove-btn {
+    margin-left: 10px;
+    cursor: pointer;
+    color: #dc3545;
+    font-weight: bold;
+    padding: 0 5px;
+    border-radius: 50%;
+}
+
+    .remove-btn:hover {
+        background-color: #f8d7da;
+    }
+
+#scoringResultsContainer {
+    margin-top: 1.5rem; /* Added margin for separation */
+}
+
+#scoringResultsTable th, #scoringResultsTable td {
+    text-align: center; /* Centered the table content */
+    vertical-align: middle;
+}
+
+/* Added for tab spacing */
+.tab-content {
+    padding-top: 1rem;
+}
+
+#scoringResultsTable pre {
+    text-align: left;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 0.25rem;
+}
+
+#rubricJson {
+    font-family: 'Courier New', Courier, monospace;
+    tab-size: 4;
+    font-size: 0.9rem;
+}
+
+.fa-check-circle {
+    color: #198754; /* Green for success */
+}
+
+.fa-times-circle {
+    color: #dc3545; /* Red for failure */
+}
