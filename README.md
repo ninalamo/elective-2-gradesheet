@@ -38,7 +38,7 @@ You have two options for setting up the initial data: using a SQL script or a `.
 
 1.  **Using SQL Script (`seed_section.sql`):** This is the manual approach. After running the `dotnet ef database update` command, you can execute the `seed_section.sql` script to populate the `Sections` table.
 
-2.  **Using a `.bacpac` file (`prelim-activities.bacpac`):** This is the recommended approach if you have an existing database. A `.bacpac` file is a compressed archive containing both the database schema and data. **If you import the database using the `prelim-activities.bacpac` file, you do not need to execute the following steps:**
+2.  **Using a `.bacpac` file (`prelim-activities.dacpac`):** This is the recommended approach if you have an existing database. A `.bacpac` file is a compressed archive containing both the database schema and data. **If you import the database using the `prelim-activities.bacpac` file, you do not need to execute the following steps:**
     * `dotnet ef database update` (the schema and data are already included).
     * `seed_section.sql` (the sections data is already included).
     * You will also not need to use the "Upload Gradebook CSV" feature on the application's home page, as the database already contains student and activity records.
