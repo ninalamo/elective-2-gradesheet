@@ -1,0 +1,71 @@
+﻿@using elective_2_gradesheet.Data.Entities
+
+<div class="modal fade" id="editActivityModal" tabindex="-1" aria-labelledby="editActivityModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editActivityModalLabel">Edit Activity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="UpdateActivity" method="post">
+                <div class="modal-body">
+                    <input type="hidden" name="studentId" value="@Model.StudentId" />
+                    <input type="hidden" id="editActivityId" name="activityId" />
+                    <input type="hidden" id="editActivityNameInput" name="activityName" />
+
+                    <div class="mb-3">
+                        <label class="form-label">Activity Name</label>
+                        <p id="editActivityName" class="form-control-plaintext"></p>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="mb-3">
+                            <label for="editPoints" class="form-label">Points</label>
+                            <input type="number" id="editPoints" name="points" class="form-control" step="any" required />
+                        </div>
+
+                        <div class="mb-3" id="maxPointsContainer">
+                            <label for="editMaxPoints" class="form-label">Max Points</label>
+                            <input type="number" id="editMaxPoints" name="maxPoints" class="form-control" step="any" required />
+                        </div>
+                    </div>
+
+                    <div class="mb-3" id="githubLinkContainer">
+                        <label for="editGithubLink" class="form-label">Github Link</label>
+                        <input type="text" id="editGithubLink" name="githubLink" class="form-control" />
+                    </div>
+
+                    <div class="mb-3" id="periodContainer">
+                        <label for="editPeriod" class="form-label">Grading Period</label>
+                        <select id="editPeriod" name="period" asp-items="Html.GetEnumSelectList<GradingPeriod>()" class="form-control" required></select>
+                    </div>
+
+                    <div class="mb-3" id="statusContainer">
+                        <label for="editStatus" class="form-label">Status</label>
+                        <select id="editStatus" name="status" class="form-control" required>
+                            <option value="Added">Added</option>
+                            <option value="Turned in">Turned in</option>
+                            <option value="Missing">Missing</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="tagContainer">
+                        <label for="editTag" class="form-label">Tag</label>
+                        <select id="editTag" name="tag" class="form-control" required>
+                            <option value="Assignment">Assignment</option>
+                            <option value="Hands-on">Hands-on</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="otherTagContainer" style="display: none;">
+                        <label for="otherTag" class="form-label">Custom Tag</label>
+                        <input type="text" id="otherTag" name="otherTag" class="form-control" placeholder="Not assignment or hands-on" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
