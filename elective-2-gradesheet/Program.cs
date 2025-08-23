@@ -13,7 +13,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 
 builder.Services.AddScoped<IGradeService, GradeService>();
-builder.Services.AddScoped<ICsvParsingService, CsvParsingService>(); 
+builder.Services.AddScoped<ICsvParsingService, CsvParsingService>();
+builder.Services.AddScoped<IGitHubRepositoryService, GitHubRepositoryService>();
 
 
 var app = builder.Build();

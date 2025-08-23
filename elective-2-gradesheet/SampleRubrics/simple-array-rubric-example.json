@@ -1,0 +1,32 @@
+[
+  {
+    "title": "HTML Structure",
+    "score": 25,
+    "files": ["index.html", "*.html"],
+    "keywords": ["<!DOCTYPE html>", "<html>", "<head>", "<body>", "<meta charset"]
+  },
+  {
+    "title": "CSS Styling",
+    "score": 20,
+    "files": ["style.css", "*.css"],
+    "keywords": ["flexbox", "grid", "@media", "responsive", "hover"]
+  },
+  {
+    "title": "JavaScript Functionality", 
+    "score": 30,
+    "files": ["script.js", "*.js"],
+    "keywords": ["function", "addEventListener", "querySelector", "async", "fetch", "const", "let"]
+  },
+  {
+    "title": "Documentation",
+    "score": 15,
+    "files": ["README.md", "readme.txt"],
+    "keywords": ["# ", "## ", "description", "usage", "installation", "setup"]
+  },
+  {
+    "title": "Project Configuration",
+    "score": 10,
+    "files": ["package.json", "*.json", ".gitignore"],
+    "keywords": ["dependencies", "scripts", "version", "name", "description"]
+  }
+]

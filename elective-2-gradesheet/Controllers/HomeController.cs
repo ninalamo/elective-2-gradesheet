@@ -14,12 +14,14 @@ namespace CsvImporter.Controllers
     {
         private readonly IGradeService _gradeService;
         private readonly ICsvParsingService _csvParsingService;
+        private readonly IGitHubRepositoryService _gitHubRepositoryService;
         private readonly ApplicationDbContext _context;
 
-        public HomeController(IGradeService gradeService, ICsvParsingService csvParsingService, ApplicationDbContext dbContext)
+        public HomeController(IGradeService gradeService, ICsvParsingService csvParsingService, IGitHubRepositoryService gitHubRepositoryService, ApplicationDbContext dbContext)
         {
             _gradeService = gradeService;
             _csvParsingService = csvParsingService;
+            _gitHubRepositoryService = gitHubRepositoryService;
             _context = dbContext;
         }
 
@@ -147,6 +149,205 @@ namespace CsvImporter.Controllers
             {
                 // Return JSON for error
                 return Json(new { success = false, message = $"Error adding missing activities: {ex.Message}", type = "danger", addedCount = 0 });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CloneGitHubRepository(string githubUrl, string destinationPath, string keywords, bool cleanupAfterScan = false)
+        {
+            try
+            {
+                // Validate inputs
+                if (string.IsNullOrWhiteSpace(githubUrl))
+                {
+                    return Json(new { success = false, message = "Please provide a GitHub URL.", type = "danger" });
+                }
+
+                // Set default destination path if not provided
+                if (string.IsNullOrWhiteSpace(destinationPath))
+                {
+                    destinationPath = @"D:\temporary_github";
+                }
+
+                // Parse keywords if provided
+                var keywordList = new List<string>();
+                if (!string.IsNullOrWhiteSpace(keywords))
+                {
+                    keywordList = keywords.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                                         .Select(k => k.Trim())
+                                         .Where(k => !string.IsNullOrWhiteSpace(k))
+                                         .ToList();
+                }
+
+                // Clone and scan the repository
+                var result = await _gitHubRepositoryService.CloneAndScanRepositoryAsync(githubUrl, destinationPath, keywordList);
+
+                if (result.Success)
+                {
+                    var responseData = new
+                    {
+                        success = true,
+                        message = result.Message,
+                        type = "success",
+                        clonedPath = result.ClonedPath,
+                        foundKeywords = result.FoundKeywords,
+                        scannedFiles = result.ScannedFiles.Select(f => new
+                        {
+                            fileName = f.FileName,
+                            filePath = f.FilePath,
+                            matchedKeywords = f.MatchedKeywords,
+                            matchedLines = f.MatchedLines.Take(5).ToList() // Limit to first 5 matches per file
+                        }).ToList()
+                    };
+
+                    // Cleanup if requested
+                    if (cleanupAfterScan && !string.IsNullOrWhiteSpace(result.ClonedPath))
+                    {
+                        await _gitHubRepositoryService.CleanupRepositoryAsync(result.ClonedPath);
+                    }
+
+                    return Json(responseData);
+                }
+                else
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = result.Message,
+                        type = "danger",
+                        errorDetails = result.ErrorDetails
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    success = false,
+                    message = "An error occurred while processing the GitHub repository.",
+                    type = "danger",
+                    errorDetails = ex.Message
+                });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ScanWithRubric(string githubUrl, string destinationPath, string rubricJson, bool cleanupAfterScan, int studentId, int activityId)
+        {
+            try
+            {
+                // Validate inputs
+                if (string.IsNullOrWhiteSpace(githubUrl))
+                {
+                    return Json(new { success = false, message = "Please provide a GitHub URL.", type = "danger" });
+                }
+
+                if (string.IsNullOrWhiteSpace(rubricJson))
+                {
+                    return Json(new { success = false, message = "Please provide a rubric JSON.", type = "danger" });
+                }
+
+                // Set default destination path if not provided
+                if (string.IsNullOrWhiteSpace(destinationPath))
+                {
+                    destinationPath = @"D:\temporary_github";
+                }
+
+                // Parse and validate rubric JSON
+                List<SimpleRubricItem> rubric;
+                try
+                {
+                    rubric = SimpleRubricHelper.DeserializeRubric(rubricJson);
+                    if (rubric == null)
+                    {
+                        return Json(new { success = false, message = "Failed to parse rubric JSON.", type = "danger" });
+                    }
+
+                    // Validate rubric structure
+                    foreach (var item in rubric)
+                    {
+                        if (string.IsNullOrWhiteSpace(item.Title) || item.Score <= 0 || 
+                            item.Files == null || !item.Files.Any() || 
+                            item.Keywords == null || !item.Keywords.Any())
+                        {
+                            return Json(new { success = false, message = "Invalid rubric structure. Each item must have: title, score > 0, files array, and keywords array.", type = "danger" });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return Json(new { success = false, message = $"Invalid JSON format: {ex.Message}", type = "danger" });
+                }
+
+                // Scan with rubric
+                var result = await _gitHubRepositoryService.CloneAndScanWithRubricAsync(githubUrl, destinationPath, rubric, studentId, activityId);
+
+                if (result != null)
+                {
+                    var responseData = new
+                    {
+                        success = true,
+                        message = $"Repository scanned successfully! Total score: {result.TotalScore}/{result.MaxPossibleScore} ({result.Percentage:F1}%)",
+                        type = "success",
+                        data = new
+                        {
+                            studentId = result.StudentId,
+                            activityId = result.ActivityId,
+                            repositoryUrl = result.RepositoryUrl,
+                            scannedDate = result.ScannedDate,
+                            totalScore = result.TotalScore,
+                            maxPossibleScore = result.MaxPossibleScore,
+                            percentage = result.Percentage,
+                            rubricItems = result.RubricItems.Select(item => new
+                            {
+                                title = item.Title,
+                                maxScore = item.MaxScore,
+                                earnedScore = item.EarnedScore,
+                                foundFiles = item.FoundFiles,
+                                missingFiles = item.MissingFiles,
+                                foundKeywords = item.FoundKeywords,
+                                missingKeywords = item.MissingKeywords,
+                                keywordMatches = item.KeywordMatches.Select(match => new
+                                {
+                                    keyword = match.Keyword,
+                                    lineNumber = match.LineNumber,
+                                    line = match.Line,
+                                    context = match.Context
+                                }).ToList()
+                            }).ToList()
+                        }
+                    };
+
+                    // Cleanup if requested and we have a valid path
+                    if (cleanupAfterScan)
+                    {
+                        // The service should have cleaned up automatically, but we can add extra cleanup here if needed
+                        // For now, we'll trust the service to handle cleanup
+                    }
+
+                    return Json(responseData);
+                }
+                else
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        message = "Failed to scan repository with rubric. No results returned.",
+                        type = "danger"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    success = false,
+                    message = "An error occurred while scanning the repository with the rubric.",
+                    type = "danger",
+                    errorDetails = ex.Message
+                });
             }
         }
 

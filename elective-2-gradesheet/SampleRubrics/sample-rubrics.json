@@ -1,0 +1,319 @@
+{
+  "webDevelopmentProject": {
+    "description": "Web Development Project - HTML, CSS, JavaScript",
+    "keywords": [
+      "function", 
+      "addEventListener", 
+      "querySelector", 
+      "fetch", 
+      "async", 
+      "await", 
+      "const", 
+      "let"
+    ],
+    "requiredFiles": [
+      "index.html",
+      "style.css", 
+      "script.js",
+      "README.md"
+    ],
+    "filesToScan": [
+      {
+        "pattern": "*.html",
+        "required": true,
+        "keywords": [
+          "<!DOCTYPE html>", 
+          "<html>", 
+          "<head>", 
+          "<meta charset", 
+          "<title>", 
+          "<body>"
+        ],
+        "weight": 1.5,
+        "description": "HTML structure and semantic elements"
+      },
+      {
+        "pattern": "*.css",
+        "required": true,
+        "keywords": [
+          "flexbox", 
+          "grid", 
+          "@media", 
+          "responsive", 
+          "hover", 
+          "transition"
+        ],
+        "weight": 1.0,
+        "description": "CSS styling and responsive design"
+      },
+      {
+        "pattern": "*.js",
+        "required": true,
+        "keywords": [
+          "addEventListener", 
+          "querySelector", 
+          "fetch", 
+          "async", 
+          "function", 
+          "=>"
+        ],
+        "weight": 2.0,
+        "description": "JavaScript functionality and interactivity"
+      }
+    ],
+    "forbiddenPatterns": [
+      "console.log",
+      "alert(",
+      "debugger",
+      "TODO:",
+      "FIXME:",
+      "var "
+    ],
+    "scoring": {
+      "keywordFoundPoints": 5,
+      "requiredFilePoints": 15,
+      "forbiddenPatternPenalty": -2,
+      "bonusForAllKeywords": 20,
+      "maxScore": 100
+    }
+  },
+
+  "csharpConsoleApp": {
+    "description": "C# Console Application with OOP",
+    "keywords": [
+      "class", 
+      "public", 
+      "private", 
+      "static", 
+      "void", 
+      "string", 
+      "int", 
+      "Console.WriteLine"
+    ],
+    "requiredFiles": [
+      "Program.cs",
+      "*.csproj"
+    ],
+    "filesToScan": [
+      {
+        "pattern": "*.cs",
+        "required": true,
+        "keywords": [
+          "class", 
+          "public", 
+          "private", 
+          "constructor", 
+          "method", 
+          "property",
+          "namespace"
+        ],
+        "weight": 2.0,
+        "description": "C# code structure and OOP principles"
+      }
+    ],
+    "forbiddenPatterns": [
+      "Console.ReadLine",
+      "//TODO",
+      "throw new NotImplementedException"
+    ],
+    "scoring": {
+      "keywordFoundPoints": 8,
+      "requiredFilePoints": 20,
+      "forbiddenPatternPenalty": -3,
+      "bonusForAllKeywords": 15,
+      "maxScore": 100
+    }
+  },
+
+  "reactApplication": {
+    "description": "React Application with Components and Hooks",
+    "keywords": [
+      "React", 
+      "useState", 
+      "useEffect", 
+      "component", 
+      "props", 
+      "JSX", 
+      "export", 
+      "import"
+    ],
+    "requiredFiles": [
+      "package.json",
+      "src/App.js",
+      "public/index.html"
+    ],
+    "filesToScan": [
+      {
+        "pattern": "src/**/*.js",
+        "required": true,
+        "keywords": [
+          "import React", 
+          "useState", 
+          "useEffect", 
+          "function", 
+          "const", 
+          "export default"
+        ],
+        "weight": 2.5,
+        "description": "React components and hooks usage"
+      },
+      {
+        "pattern": "src/**/*.jsx",
+        "required": false,
+        "keywords": [
+          "JSX", 
+          "className", 
+          "onClick", 
+          "onChange", 
+          "render"
+        ],
+        "weight": 2.0,
+        "description": "JSX syntax and event handling"
+      },
+      {
+        "pattern": "*.css",
+        "required": false,
+        "keywords": [
+          "module", 
+          "component", 
+          "responsive", 
+          "@media"
+        ],
+        "weight": 1.0,
+        "description": "Component styling"
+      }
+    ],
+    "forbiddenPatterns": [
+      "console.log",
+      "debugger",
+      "alert(",
+      "document.getElementById"
+    ],
+    "scoring": {
+      "keywordFoundPoints": 6,
+      "requiredFilePoints": 25,
+      "forbiddenPatternPenalty": -4,
+      "bonusForAllKeywords": 30,
+      "maxScore": 150
+    }
+  },
+
+  "databaseProject": {
+    "description": "Database Project with SQL and Backend Integration",
+    "keywords": [
+      "SELECT", 
+      "INSERT", 
+      "UPDATE", 
+      "DELETE", 
+      "JOIN", 
+      "WHERE", 
+      "DATABASE", 
+      "TABLE"
+    ],
+    "requiredFiles": [
+      "schema.sql",
+      "queries.sql",
+      "README.md"
+    ],
+    "filesToScan": [
+      {
+        "pattern": "*.sql",
+        "required": true,
+        "keywords": [
+          "CREATE TABLE", 
+          "PRIMARY KEY", 
+          "FOREIGN KEY", 
+          "SELECT", 
+          "JOIN", 
+          "INDEX"
+        ],
+        "weight": 3.0,
+        "description": "SQL database design and queries"
+      },
+      {
+        "pattern": "*.cs",
+        "required": false,
+        "keywords": [
+          "SqlConnection", 
+          "SqlCommand", 
+          "ExecuteQuery", 
+          "Entity Framework", 
+          "LINQ"
+        ],
+        "weight": 2.0,
+        "description": "Database integration code"
+      }
+    ],
+    "forbiddenPatterns": [
+      "DROP TABLE",
+      "DELETE FROM users",
+      "SELECT *",
+      "--TODO"
+    ],
+    "scoring": {
+      "keywordFoundPoints": 10,
+      "requiredFilePoints": 30,
+      "forbiddenPatternPenalty": -10,
+      "bonusForAllKeywords": 25,
+      "maxScore": 120
+    }
+  },
+
+  "mobileAppProject": {
+    "description": "Mobile App Development Project",
+    "keywords": [
+      "component", 
+      "state", 
+      "navigation", 
+      "API", 
+      "async", 
+      "await", 
+      "fetch", 
+      "StyleSheet"
+    ],
+    "requiredFiles": [
+      "App.js",
+      "package.json"
+    ],
+    "filesToScan": [
+      {
+        "pattern": "**/*.js",
+        "required": true,
+        "keywords": [
+          "import", 
+          "export", 
+          "function", 
+          "const", 
+          "useState", 
+          "useEffect"
+        ],
+        "weight": 2.0,
+        "description": "JavaScript/React Native components"
+      },
+      {
+        "pattern": "**/*.json",
+        "required": false,
+        "keywords": [
+          "dependencies", 
+          "react-native", 
+          "expo"
+        ],
+        "weight": 1.0,
+        "description": "Configuration and dependencies"
+      }
+    ],
+    "forbiddenPatterns": [
+      "console.log",
+      "alert",
+      "TODO:",
+      "FIXME:"
+    ],
+    "scoring": {
+      "keywordFoundPoints": 7,
+      "requiredFilePoints": 20,
+      "forbiddenPatternPenalty": -3,
+      "bonusForAllKeywords": 25,
+      "maxScore": 100
+    }
+  }
+}

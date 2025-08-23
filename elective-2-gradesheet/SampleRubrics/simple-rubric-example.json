@@ -1,0 +1,69 @@
+{
+  "description": "Web Development Project - HTML, CSS, JavaScript",
+  "keywords": [
+    "function",
+    "addEventListener", 
+    "querySelector",
+    "fetch",
+    "async",
+    "const"
+  ],
+  "requiredFiles": [
+    "index.html",
+    "style.css",
+    "script.js",
+    "README.md"
+  ],
+  "filesToScan": [
+    {
+      "pattern": "*.html",
+      "required": true,
+      "keywords": [
+        "<!DOCTYPE html>",
+        "<html>",
+        "<head>",
+        "<body>"
+      ],
+      "weight": 1.5,
+      "description": "HTML structure"
+    },
+    {
+      "pattern": "*.css", 
+      "required": true,
+      "keywords": [
+        "flexbox",
+        "grid", 
+        "@media",
+        "responsive"
+      ],
+      "weight": 1.0,
+      "description": "CSS styling"
+    },
+    {
+      "pattern": "*.js",
+      "required": true, 
+      "keywords": [
+        "addEventListener",
+        "querySelector",
+        "function",
+        "async"
+      ],
+      "weight": 2.0,
+      "description": "JavaScript functionality"
+    }
+  ],
+  "forbiddenPatterns": [
+    "console.log",
+    "alert(",
+    "debugger",
+    "TODO:",
+    "var "
+  ],
+  "scoring": {
+    "keywordFoundPoints": 5,
+    "requiredFilePoints": 15,
+    "forbiddenPatternPenalty": -2,
+    "bonusForAllKeywords": 20,
+    "maxScore": 100
+  }
+}

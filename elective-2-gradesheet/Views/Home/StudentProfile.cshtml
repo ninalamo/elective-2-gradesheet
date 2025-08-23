@@ -182,6 +182,73 @@
                         <label for="otherTag" class="form-label">Custom Tag</label>
                         <input type="text" id="otherTag" name="otherTag" class="form-control" placeholder="Not assignment or hands-on" />
                     </div>
+
+                    <!-- GitHub Repository Scanner with Rubric -->
+                    <div class="mb-3 mt-4" id="githubRepoSection">
+                        <hr>
+                        <h6 class="text-primary">GitHub Repository Scanner with Rubric</h6>
+                        
+                        <!-- GitHub URL -->
+                        <div class="mb-3">
+                            <label for="githubRepoUrl" class="form-label">GitHub Repository URL</label>
+                            <input type="text" id="githubRepoUrl" class="form-control" placeholder="https://github.com/username/repository" />
+                        </div>
+                        
+                        <!-- Storage Location -->
+                        <div class="mb-3">
+                            <label for="githubDestinationPath" class="form-label">Storage Location</label>
+                            <input type="text" id="githubDestinationPath" class="form-control" value="D:\temporary_github" />
+                        </div>
+                        
+                        <!-- Rubric JSON Input -->
+                        <div class="mb-3">
+                            <label for="rubricJson" class="form-label">Rubric JSON</label>
+                            <textarea id="rubricJson" class="form-control" rows="10" 
+                                placeholder='Paste your rubric JSON here. Example:
+[
+  {
+    "title": "HTML Structure",
+    "score": 25,
+    "files": ["index.html", "*.html"],
+    "keywords": ["<!DOCTYPE html>", "<html>", "<head>", "<body>"]
+  },
+  {
+    "title": "CSS Styling", 
+    "score": 20,
+    "files": ["style.css", "*.css"],
+                            "keywords": ["flexbox", "grid", "@@media", "responsive"]
+  }
+]'></textarea>
+                            <small class="form-text text-muted">Each rubric item should have: title, score, files (array), and keywords (array)</small>
+                        </div>
+                        
+                        <!-- Load Sample Button -->
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="loadSampleRubricBtn">
+                                <i class="fas fa-file-code"></i> Load Sample Rubric
+                            </button>
+                        </div>
+                        
+                        <!-- Options -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="cleanupAfterScan" checked>
+                                <label class="form-check-label" for="cleanupAfterScan">
+                                    Delete repository after scanning (recommended)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Scan Button -->
+                        <button type="button" class="btn btn-success" id="scanWithRubricBtn">
+                            <i class="fas fa-search"></i> Scan Repository with Rubric
+                        </button>
+                        
+                        <!-- Results Section -->
+                        <div id="rubricResults" class="mt-4" style="display: none;">
+                            <!-- Results will be displayed here -->
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -347,7 +414,295 @@
             toast.show();
         }
 
-        // Bulk Add Form Submission Handler
+        // GitHub Repository Scanner with Rubric Handler
+        document.addEventListener('DOMContentLoaded', function () {
+            var scanWithRubricBtn = document.getElementById('scanWithRubricBtn');
+            var loadSampleRubricBtn = document.getElementById('loadSampleRubricBtn');
+            var rubricResults = document.getElementById('rubricResults');
+            var rubricJsonTextarea = document.getElementById('rubricJson');
+
+            // Load Sample Rubric Button
+            if (loadSampleRubricBtn) {
+                loadSampleRubricBtn.addEventListener('click', function () {
+                    const sampleRubric = [
+                        {
+                            "title": "HTML Structure",
+                            "score": 25,
+                            "files": ["index.html", "*.html"],
+                            "keywords": ["<!DOCTYPE html>", "<html>", "<head>", "<body>", "<meta charset"]
+                        },
+                        {
+                            "title": "CSS Styling",
+                            "score": 20,
+                            "files": ["style.css", "*.css"],
+                            "keywords": ["flexbox", "grid", "@@media", "responsive", "hover"]
+                        },
+                        {
+                            "title": "JavaScript Functionality",
+                            "score": 30,
+                            "files": ["script.js", "*.js"],
+                            "keywords": ["function", "addEventListener", "querySelector", "async", "fetch", "const", "let"]
+                        },
+                        {
+                            "title": "Documentation",
+                            "score": 15,
+                            "files": ["README.md", "readme.txt"],
+                            "keywords": ["# ", "## ", "description", "usage", "installation", "setup"]
+                        },
+                        {
+                            "title": "Project Configuration",
+                            "score": 10,
+                            "files": ["package.json", "*.json", ".gitignore"],
+                            "keywords": ["dependencies", "scripts", "version", "name", "description"]
+                        }
+                    ];
+                    
+                    rubricJsonTextarea.value = JSON.stringify(sampleRubric, null, 2);
+                    showToast('Sample rubric loaded successfully!', 'info');
+                });
+            }
+
+            // Scan with Rubric Button
+            if (scanWithRubricBtn) {
+                scanWithRubricBtn.addEventListener('click', async function (event) {
+                    event.preventDefault();
+
+                    const githubUrl = document.getElementById('githubRepoUrl').value.trim();
+                    const destinationPath = document.getElementById('githubDestinationPath').value.trim();
+                    const rubricJson = document.getElementById('rubricJson').value.trim();
+                    const cleanupAfterScan = document.getElementById('cleanupAfterScan').checked;
+
+                    // Validation
+                    if (!githubUrl) {
+                        showToast('Please enter a GitHub repository URL.', 'danger');
+                        return;
+                    }
+
+                    if (!rubricJson) {
+                        showToast('Please enter a rubric JSON.', 'danger');
+                        return;
+                    }
+
+                    // Validate JSON
+                    let rubricData;
+                    try {
+                        rubricData = JSON.parse(rubricJson);
+                        if (!Array.isArray(rubricData)) {
+                            throw new Error('Rubric must be an array');
+                        }
+                        // Validate rubric items
+                        for (let item of rubricData) {
+                            if (!item.title || !item.score || !Array.isArray(item.files) || !Array.isArray(item.keywords)) {
+                                throw new Error('Each rubric item must have: title, score, files (array), keywords (array)');
+                            }
+                        }
+                    } catch (error) {
+                        showToast(`Invalid JSON: ${error.message}`, 'danger');
+                        return;
+                    }
+
+                    // Show loading state
+                    const originalButtonText = scanWithRubricBtn.innerHTML;
+                    scanWithRubricBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning...';
+                    scanWithRubricBtn.disabled = true;
+                    rubricResults.style.display = 'none';
+
+                    const formData = new FormData();
+                    formData.append('githubUrl', githubUrl);
+                    formData.append('destinationPath', destinationPath);
+                    formData.append('rubricJson', rubricJson);
+                    formData.append('cleanupAfterScan', cleanupAfterScan);
+                    formData.append('studentId', @Model.StudentId);
+                    formData.append('activityId', 0); // Default for scanning
+
+                    try {
+                        const response = await fetch('@Url.Action("ScanWithRubric", "Home")', {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                            }
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            showToast(result.message, 'success');
+                            displayRubricResults(result.data);
+                        } else {
+                            showToast(result.message, 'danger');
+                            if (result.errorDetails) {
+                                console.error('Rubric scan error details:', result.errorDetails);
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error('Error scanning repository with rubric:', error);
+                        showToast('An unexpected error occurred while scanning the repository.', 'danger');
+                    } finally {
+                        // Restore button state
+                        scanWithRubricBtn.innerHTML = originalButtonText;
+                        scanWithRubricBtn.disabled = false;
+                    }
+                });
+            }
+
+            function displayRubricResults(result) {
+                if (!result || !result.rubricItems) {
+                    rubricResults.innerHTML = '<div class="alert alert-warning">No results to display.</div>';
+                    rubricResults.style.display = 'block';
+                    return;
+                }
+
+                let html = '<div class="alert alert-success"><strong>Repository scanned successfully!</strong></div>';
+                
+                // Score summary
+                html += '<div class="row mb-4">';
+                html += '<div class="col-md-4">';
+                html += `<div class="card text-center">`;
+                html += `<div class="card-body">`;
+                html += `<h5 class="card-title text-primary">${result.totalScore}</h5>`;
+                html += `<p class="card-text">Total Score</p>`;
+                html += `</div></div></div>`;
+                html += '<div class="col-md-4">';
+                html += `<div class="card text-center">`;
+                html += `<div class="card-body">`;
+                html += `<h5 class="card-title text-info">${result.maxPossibleScore}</h5>`;
+                html += `<p class="card-text">Max Possible</p>`;
+                html += `</div></div></div>`;
+                html += '<div class="col-md-4">';
+                html += `<div class="card text-center">`;
+                html += `<div class="card-body">`;
+                html += `<h5 class="card-title text-success">${result.percentage.toFixed(1)}%</h5>`;
+                html += `<p class="card-text">Percentage</p>`;
+                html += `</div></div></div>`;
+                html += '</div>';
+
+                // Tabbed results
+                html += '<div class="mt-4">';
+                html += '<ul class="nav nav-tabs" id="rubricTabs" role="tablist">';
+                
+                // Generate tabs
+                result.rubricItems.forEach((item, index) => {
+                    const isActive = index === 0 ? 'active' : '';
+                    const tabId = `rubric-tab-${index}`;
+                    const contentId = `rubric-content-${index}`;
+                    const scoreColor = item.earnedScore === item.maxScore ? 'text-success' : item.earnedScore > 0 ? 'text-warning' : 'text-danger';
+                    
+                    html += `<li class="nav-item" role="presentation">`;
+                    html += `<button class="nav-link ${isActive}" id="${tabId}" data-bs-toggle="tab" data-bs-target="#${contentId}" type="button" role="tab">`;
+                    html += `${item.title} <span class="${scoreColor}">(${item.earnedScore}/${item.maxScore})</span>`;
+                    html += `</button></li>`;
+                });
+                
+                html += '</ul>';
+                html += '<div class="tab-content" id="rubricTabContent">';
+                
+                // Generate tab contents
+                result.rubricItems.forEach((item, index) => {
+                    const isActive = index === 0 ? 'show active' : '';
+                    const contentId = `rubric-content-${index}`;
+                    
+                    html += `<div class="tab-pane fade ${isActive}" id="${contentId}" role="tabpanel">`;
+                    html += `<div class="p-3">`;
+                    
+                    // Score for this item
+                    html += `<div class="d-flex justify-content-between align-items-center mb-3">`;
+                    html += `<h5>${item.title}</h5>`;
+                    html += `<span class="badge bg-primary">Score: ${item.earnedScore}/${item.maxScore}</span>`;
+                    html += `</div>`;
+                    
+                    // Found files
+                    if (item.foundFiles && item.foundFiles.length > 0) {
+                        html += `<h6 class="text-success">Found Files:</h6>`;
+                        html += `<div class="mb-3">`;
+                        item.foundFiles.forEach(file => {
+                            html += `<span class="badge bg-success me-1">${file}</span>`;
+                        });
+                        html += `</div>`;
+                    }
+                    
+                    // Missing files
+                    if (item.missingFiles && item.missingFiles.length > 0) {
+                        html += `<h6 class="text-danger">Missing Files:</h6>`;
+                        html += `<div class="mb-3">`;
+                        item.missingFiles.forEach(file => {
+                            html += `<span class="badge bg-danger me-1">${file}</span>`;
+                        });
+                        html += `</div>`;
+                    }
+                    
+                    // Found keywords
+                    if (item.foundKeywords && item.foundKeywords.length > 0) {
+                        html += `<h6 class="text-success">Found Keywords:</h6>`;
+                        html += `<div class="mb-3">`;
+                        item.foundKeywords.forEach(keyword => {
+                            html += `<span class="badge bg-success me-1">${keyword}</span>`;
+                        });
+                        html += `</div>`;
+                    }
+                    
+                    // Missing keywords
+                    if (item.missingKeywords && item.missingKeywords.length > 0) {
+                        html += `<h6 class="text-warning">Missing Keywords:</h6>`;
+                        html += `<div class="mb-3">`;
+                        item.missingKeywords.forEach(keyword => {
+                            html += `<span class="badge bg-warning text-dark me-1">${keyword}</span>`;
+                        });
+                        html += `</div>`;
+                    }
+                    
+                    // Keyword matches with context
+                    if (item.keywordMatches && item.keywordMatches.length > 0) {
+                        html += `<h6 class="text-info">Keyword Matches:</h6>`;
+                        html += `<div class="accordion mb-3" id="matches-${index}">`;
+                        
+                        const groupedMatches = {};
+                        item.keywordMatches.forEach(match => {
+                            if (!groupedMatches[match.keyword]) {
+                                groupedMatches[match.keyword] = [];
+                            }
+                            groupedMatches[match.keyword].push(match);
+                        });
+                        
+                        Object.keys(groupedMatches).forEach((keyword, keywordIndex) => {
+                            const matches = groupedMatches[keyword];
+                            const accordionId = `accordion-${index}-${keywordIndex}`;
+                            
+                            html += `<div class="accordion-item">`;
+                            html += `<h2 class="accordion-header" id="heading-${accordionId}">`;
+                            html += `<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${accordionId}">`;
+                            html += `${keyword} (${matches.length} matches)`;
+                            html += `</button></h2>`;
+                            html += `<div id="collapse-${accordionId}" class="accordion-collapse collapse" data-bs-parent="#matches-${index}">`;
+                            html += `<div class="accordion-body">`;
+                            
+                            matches.forEach(match => {
+                                html += `<div class="mb-2">`;
+                                html += `<small class="text-muted">Line ${match.lineNumber}:</small><br>`;
+                                html += `<code class="small">${match.line}</code>`;
+                                if (match.context) {
+                                    html += `<details class="mt-1"><summary class="small text-muted">Context</summary><pre class="small">${match.context}</pre></details>`;
+                                }
+                                html += `</div>`;
+                            });
+                            
+                            html += `</div></div></div>`;
+                        });
+                        
+                        html += `</div>`;
+                    }
+                    
+                    html += `</div></div>`;
+                });
+                
+                html += '</div></div>';
+
+                rubricResults.innerHTML = html;
+                rubricResults.style.display = 'block';
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', function () {
             var bulkAddForm = document.getElementById('bulkAddForm');
 
