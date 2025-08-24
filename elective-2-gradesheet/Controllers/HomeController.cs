@@ -203,6 +203,7 @@ namespace CsvImporter.Controllers
         {
             return Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
         }
+
     }
 
     public class RubricItem

@@ -37,49 +37,43 @@ namespace elective_2_gradesheet.Services
 
             if (student == null) return 0;
 
-            // Get all unique activities (ActivityName, Period, MaxPoints, Tag) for the student's section within the specified period.
-            // We include Tag here so we can use it to infer for missing activities.
-            var allUniqueSectionActivities = await _context.Activities
-                .Where(a => a.Student.SectionId == student.SectionId && a.Period == period)
-                .Select(a => new { a.ActivityName, a.Period, a.MaxPoints, a.Tag })
-                .Distinct()
+            // Get all activity templates for the student's section within the specified period.
+            var allSectionActivityTemplates = await _context.ActivityTemplates
+                .Where(a => a.SectionId == student.SectionId && a.Period == period && a.IsActive)
                 .ToListAsync();
 
-            // Get all activities already submitted by the student for that period.
-            var studentSubmittedActivityNames = await _context.Activities
-                .Where(a => a.StudentId == studentId && a.Period == period)
-                .Select(a => a.ActivityName)
+            // Get all student submissions already created for this student in that period.
+            var studentSubmissions = await _context.StudentSubmissions
+                .Include(ss => ss.ActivityTemplate)
+                .Where(ss => ss.StudentId == studentId && ss.ActivityTemplate.Period == period)
+                .Select(ss => ss.ActivityTemplateId)
                 .ToListAsync();
 
-            // Identify the missing activities by comparing the two lists.
-            var missingActivities = allUniqueSectionActivities
-                .Where(ua => !studentSubmittedActivityNames.Contains(ua.ActivityName))
+            // Identify the missing activity templates (no submission exists for them).
+            var missingTemplates = allSectionActivityTemplates
+                .Where(template => !studentSubmissions.Contains(template.Id))
                 .ToList();
 
-            var newActivities = new List<Activity>();
+            var newSubmissions = new List<StudentSubmission>();
 
-            foreach (var missingActivity in missingActivities)
+            foreach (var template in missingTemplates)
             {
-                string inferredTag = InferTagFromActivityName(missingActivity.ActivityName);
-                double maxPoints = missingActivity.MaxPoints > 0 ? missingActivity.MaxPoints : 100; // Default to 100 if MaxPoints is not set or zero.
-
-                var newActivity = new Activity
+                var newSubmission = new StudentSubmission
                 {
                     StudentId = student.Id,
-                    ActivityName = missingActivity.ActivityName, // Use the original activity name
-                    MaxPoints = maxPoints,
+                    ActivityTemplateId = template.Id,
                     Points = 0, // Default scores to zero
-                    Status = "Added", // New activities are initially "Missing"
-                    Period = missingActivity.Period,
-                    Tag = inferredTag, // Use the inferred tag
-                    GithubLink = null // Default GitHub link to null
+                    Status = "Missing", // New submissions are initially "Missing"
+                    GithubLink = null, // Default GitHub link to null
+                    SubmissionDate = null,
+                    GradedDate = null
                 };
-                newActivities.Add(newActivity);
+                newSubmissions.Add(newSubmission);
             }
 
-            _context.Activities.AddRange(newActivities);
+            _context.StudentSubmissions.AddRange(newSubmissions);
             await _context.SaveChangesAsync();
-            return newActivities.Count();
+            return newSubmissions.Count;
         }
 
         // Helper method for smart tagging based on activity name keywords
@@ -124,40 +118,38 @@ namespace elective_2_gradesheet.Services
 
             if (student == null) return null;
 
-            // Get a master list of all unique activities for the student's section.
-            // This query correctly selects only the properties that define a unique activity.
-            var allUniqueSectionActivities = await _context.Activities
-                .Where(a => a.Student.SectionId == student.SectionId)
-                .Select(a => new { a.ActivityName, a.Period, a.MaxPoints })
-                .Distinct()
+            // Get all activity templates for the student's section.
+            var allSectionActivityTemplates = await _context.ActivityTemplates
+                .Where(a => a.SectionId == student.SectionId && a.IsActive)
                 .ToListAsync();
 
-            // Get all activities submitted by the current student.
-            var studentActivities = await _context.Activities
-                .Where(a => a.StudentId == studentId)
+            // Get all student submissions for the current student.
+            var studentSubmissions = await _context.StudentSubmissions
+                .Include(ss => ss.ActivityTemplate)
+                .Where(ss => ss.StudentId == studentId)
                 .ToListAsync();
 
             var activitiesViewModel = new List<ActivityViewModel>();
 
-            // Iterate through the master list of all possible activities.
-            foreach (var uniqueActivity in allUniqueSectionActivities)
+            // Iterate through all activity templates in the section.
+            foreach (var template in allSectionActivityTemplates)
             {
-                // Find the specific activity record for the current student.
-                var submittedActivity = studentActivities.FirstOrDefault(sa => sa.ActivityName == uniqueActivity.ActivityName && sa.Period == uniqueActivity.Period);
+                // Find the specific submission record for the current student.
+                var submission = studentSubmissions.FirstOrDefault(ss => ss.ActivityTemplateId == template.Id);
 
-                if (submittedActivity != null)
+                if (submission != null)
                 {
-                    // If the student has a record, add it to the view model.
+                    // If the student has a submission, add it to the view model.
                     activitiesViewModel.Add(new ActivityViewModel
                     {
-                        ActivityId = submittedActivity.Id,
-                        ActivityName = submittedActivity.ActivityName,
-                        Tag = submittedActivity.Tag,
-                        GradingPeriod = submittedActivity.Period.ToString(),
-                        Status = submittedActivity.Status,
-                        Points = submittedActivity.Points,
-                        MaxPoints = submittedActivity.MaxPoints,
-                        GithubLink = submittedActivity.GithubLink,
+                        ActivityId = submission.Id,
+                        ActivityName = template.Name,
+                        Tag = template.Tag ?? "N/A",
+                        GradingPeriod = template.Period.ToString(),
+                        Status = submission.Status,
+                        Points = submission.Points,
+                        MaxPoints = template.MaxPoints,
+                        GithubLink = submission.GithubLink,
                         StudentId = student.Id,
                         StudentFullName = student.GetFullName(),
                         SectionName = student.Section.Name,
@@ -165,17 +157,16 @@ namespace elective_2_gradesheet.Services
                 }
                 else
                 {
-                    // If no record is found, create a "Missing" entry.
-                    // This ensures the activity name is still displayed.
+                    // If no submission is found, create a "Missing" entry.
                     activitiesViewModel.Add(new ActivityViewModel
                     {
                         ActivityId = 0, // 0 indicates a new, unsaved record.
-                        ActivityName = uniqueActivity.ActivityName, // The name is retained.
-                        Tag = "N/A",
-                        GradingPeriod = uniqueActivity.Period.ToString(),
+                        ActivityName = template.Name,
+                        Tag = template.Tag ?? "N/A",
+                        GradingPeriod = template.Period.ToString(),
                         Status = "Missing",
                         Points = 0,
-                        MaxPoints = uniqueActivity.MaxPoints,
+                        MaxPoints = template.MaxPoints,
                         StudentId = student.Id,
                         StudentFullName = student.GetFullName(),
                         SectionName = student.Section.Name,
@@ -211,6 +202,7 @@ namespace elective_2_gradesheet.Services
             var query = _context.Students
                 .Include(s => s.Section)
                 .Include(s => s.Activities)
+                    .ThenInclude(ss => ss.ActivityTemplate)
                 .AsQueryable();
 
             // --- Filtering ---
@@ -236,7 +228,7 @@ namespace elective_2_gradesheet.Services
             {
                 Student = s,
                 FilteredActivities = s.Activities
-                    .Where(a => !period.HasValue || a.Period == period.Value)
+                    .Where(a => !period.HasValue || a.ActivityTemplate.Period == period.Value)
             });
 
             // The grouping logic is now performed in memory after fetching the data.
@@ -247,17 +239,18 @@ namespace elective_2_gradesheet.Services
                 StudentNumber = sg.Student.GetStudentNumber(),
                 SectionName = sg.Student.Section.Name,
                 ActivitiesByPeriod = sg.FilteredActivities
-                    .GroupBy(a => a.Period.ToString())
+                    .GroupBy(a => a.ActivityTemplate.Period.ToString())
                     .ToDictionary(
                         g => g.Key,
                         g => g.Select(a => new ActivityViewModel
                         {
-                            ActivityName = a.ActivityName,
-                            GradingPeriod = a.Period.ToString(),
+                            ActivityName = a.ActivityTemplate.Name,
+                            GradingPeriod = a.ActivityTemplate.Period.ToString(),
                             Status = a.Status,
                             Points = a.Points,
-                            MaxPoints = a.MaxPoints,
+                            MaxPoints = a.ActivityTemplate.MaxPoints,
                             GithubLink = a.GithubLink,
+                            Tag = a.ActivityTemplate.Tag ?? "N/A",
                             StudentId = sg.Student.Id,
                             StudentFullName = sg.Student.GetFullName(),
                             SectionName = sg.Student.Section.Name,
@@ -277,36 +270,92 @@ namespace elective_2_gradesheet.Services
         {
             if (activityId == default || activityId == 0)
             {
-                // Case: Add a new activity record
-                var newActivity = new Activity
+                // Case: Add a new submission record
+                // This case is complex because we need to either find or create an ActivityTemplate
+                // and then create a StudentSubmission
+                
+                var student = await _context.Students.FindAsync(studentId);
+                if (student == null) return;
+
+                // Try to find an existing activity template with the same name and period
+                var activityTemplate = await _context.ActivityTemplates
+                    .FirstOrDefaultAsync(at => at.Name == activityName && 
+                                             at.Period == period && 
+                                             at.SectionId == student.SectionId);
+
+                if (activityTemplate == null)
+                {
+                    // Create a new activity template
+                    activityTemplate = new ActivityTemplate
+                    {
+                        Name = activityName,
+                        SectionId = student.SectionId,
+                        Period = period,
+                        MaxPoints = maxPoints,
+                        Tag = tag == "Other" ? otherTag : tag,
+                        Description = "",
+                        RubricJson = null,
+                        IsActive = true
+                    };
+                    _context.ActivityTemplates.Add(activityTemplate);
+                    await _context.SaveChangesAsync(); // Save to get the ID
+                }
+                else
+                {
+                    // Update the existing template's max points if different
+                    if (activityTemplate.MaxPoints != maxPoints)
+                    {
+                        activityTemplate.MaxPoints = maxPoints;
+                        activityTemplate.UpdatedDate = DateTime.UtcNow;
+                    }
+                }
+
+                // Create the student submission
+                var newSubmission = new StudentSubmission
                 {
                     StudentId = studentId,
-                    ActivityName = activityName,
-                    MaxPoints = maxPoints,
+                    ActivityTemplateId = activityTemplate.Id,
                     Points = points,
                     Status = status,
-                    Period = period,
-                    Tag = tag == "Other" ? otherTag : tag,
-                    GithubLink = githubLink
+                    GithubLink = githubLink,
+                    SubmissionDate = status == "Submitted" ? DateTime.UtcNow : null,
+                    GradedDate = null
                 };
-                _context.Activities.Add(newActivity);
+                _context.StudentSubmissions.Add(newSubmission);
             }
             else
             {
-                // Case: Update an existing activity
-                var activity = await _context.Activities.FindAsync(activityId);
-                if (activity != null)
+                // Case: Update an existing student submission
+                var submission = await _context.StudentSubmissions
+                    .Include(ss => ss.ActivityTemplate)
+                    .FirstOrDefaultAsync(ss => ss.Id == activityId);
+                    
+                if (submission != null)
                 {
-                    activity.Points = points;
-                    activity.Period = period;
-                    activity.Tag = tag == "Other" ? otherTag : tag; // Save custom tag if "Other" is selected
-                    activity.GithubLink = githubLink;
-                    activity.MaxPoints = maxPoints;
-                    activity.Status = status;
-
-                    // Update the activity name to reflect the new period
-                    var parts = activity.ActivityName.Split(" - ");
-                    activity.ActivityName = $"{period.ToString().ToUpper()} - {parts.Last()}";
+                    submission.Points = points;
+                    submission.Status = status;
+                    submission.GithubLink = githubLink;
+                    submission.UpdatedDate = DateTime.UtcNow;
+                    
+                    if (status == "Submitted" && submission.SubmissionDate == null)
+                    {
+                        submission.SubmissionDate = DateTime.UtcNow;
+                    }
+                    
+                    // Update the activity template's max points if different
+                    if (submission.ActivityTemplate.MaxPoints != maxPoints)
+                    {
+                        submission.ActivityTemplate.MaxPoints = maxPoints;
+                        submission.ActivityTemplate.UpdatedDate = DateTime.UtcNow;
+                    }
+                    
+                    // Update the tag if it's different (tag is stored in ActivityTemplate)
+                    var newTag = tag == "Other" ? otherTag : tag;
+                    if (submission.ActivityTemplate.Tag != newTag)
+                    {
+                        submission.ActivityTemplate.Tag = newTag;
+                        submission.ActivityTemplate.UpdatedDate = DateTime.UtcNow;
+                    }
                 }
             }
 
@@ -317,59 +366,115 @@ namespace elective_2_gradesheet.Services
         public async Task ProcessAndSaveGradesAsync(CsvDisplayViewModel model)
         {
             var records = model.GradeRecords;
-            foreach (var record in records)
+            var sectionId = model.SectionId.Value;
+            var gradingPeriod = model.GradingPeriod;
+            var tag = model.Tag ?? "Other";
+
+            // Group records by activity name to reduce database calls
+            var recordsByActivity = records.GroupBy(r => r.ActivityName).ToList();
+
+            foreach (var activityGroup in recordsByActivity)
             {
-                if (string.IsNullOrEmpty(record.Email)) continue;
+                var activityName = activityGroup.Key;
+                if (string.IsNullOrEmpty(activityName)) continue;
 
-                var studentNumber = record.Email.Split('@')[0];
+                // Find or create the activity template for this activity
+                var activityTemplate = await _context.ActivityTemplates
+                    .FirstOrDefaultAsync(at => at.Name == activityName && 
+                                             at.Period == gradingPeriod && 
+                                             at.SectionId == sectionId);
 
-                // Find an existing student or create a new one.
-                var student = await _context.Students
-                    .AsNoTracking() // Use AsNoTracking for read-only operations
-                   .FirstOrDefaultAsync(s => s.Email == record.Email);
-                   
-
-                if (student == null)
+                if (activityTemplate == null)
                 {
-                    student = new Student
+                    // Create a new activity template
+                    var maxPoints = activityGroup.FirstOrDefault()?.MaxPoints;
+                    var parsedMaxPoints = double.TryParse(maxPoints, out var mp) ? mp : 100.0;
+                    
+                    activityTemplate = new ActivityTemplate
                     {
-                        LastName = record.LastName,
-                        FirstName = record.FirstName,
-                        Email = record.Email,
-                        SectionId = model.SectionId.Value // Ensure SectionId is set from the model
+                        Name = activityName,
+                        SectionId = sectionId,
+                        Period = gradingPeriod,
+                        MaxPoints = parsedMaxPoints,
+                        Tag = InferTagFromActivityName(activityName), // Use the smart tagging helper
+                        Description = $"Activity imported from CSV: {activityName}",
+                        RubricJson = null,
+                        IsActive = true
                     };
-                    _context.Students.Add(student);
-                    // We save here to ensure the student has an ID before we create the activity.
-                    await _context.SaveChangesAsync();
+                    _context.ActivityTemplates.Add(activityTemplate);
+                    await _context.SaveChangesAsync(); // Save to get ID
                 }
 
-                // Apply scoring rules.
-                var points = double.TryParse(record.Points, out var p) ? p : 0;
-                if (record.Status != "Turned in")
+                // Process each student record for this activity
+                foreach (var record in activityGroup)
                 {
-                    points = 0;
-                }
+                    if (string.IsNullOrEmpty(record.Email)) continue;
 
-                // Create the new activity record.
-                if(_context.Activities.Any(a => a.StudentId == student.Id && a.ActivityName == record.ActivityName && a.Period == model.GradingPeriod))
-                {
-                    // If the activity already exists, we can skip creating it again.
-                    continue;
+                    // Find an existing student or create a new one.
+                    var student = await _context.Students
+                        .FirstOrDefaultAsync(s => s.Email == record.Email);
+
+                    if (student == null)
+                    {
+                        student = new Student
+                        {
+                            LastName = record.LastName,
+                            FirstName = record.FirstName,
+                            Email = record.Email,
+                            SectionId = sectionId
+                        };
+                        _context.Students.Add(student);
+                        await _context.SaveChangesAsync(); // Save to get ID
+                    }
+
+                    // Check if submission already exists
+                    var existingSubmission = await _context.StudentSubmissions
+                        .FirstOrDefaultAsync(ss => ss.StudentId == student.Id && 
+                                                 ss.ActivityTemplateId == activityTemplate.Id);
+
+                    if (existingSubmission != null)
+                    {
+                        // Update existing submission
+                        var points = double.TryParse(record.Points, out var p) ? p : 0;
+                        if (record.Status != "Turned in")
+                        {
+                            points = 0;
+                        }
+
+                        existingSubmission.Points = points;
+                        existingSubmission.Status = record.Status;
+                        existingSubmission.UpdatedDate = DateTime.UtcNow;
+                        
+                        if (record.Status == "Turned in" && existingSubmission.SubmissionDate == null)
+                        {
+                            existingSubmission.SubmissionDate = DateTime.UtcNow;
+                        }
+                    }
+                    else
+                    {
+                        // Create new submission
+                        var points = double.TryParse(record.Points, out var p) ? p : 0;
+                        if (record.Status != "Turned in")
+                        {
+                            points = 0;
+                        }
+
+                        var submission = new StudentSubmission
+                        {
+                            StudentId = student.Id,
+                            ActivityTemplateId = activityTemplate.Id,
+                            Points = points,
+                            Status = record.Status,
+                            GithubLink = null,
+                            SubmissionDate = record.Status == "Turned in" ? DateTime.UtcNow : null,
+                            GradedDate = null
+                        };
+                        _context.StudentSubmissions.Add(submission);
+                    }
                 }
-                var activity = new Activity
-                {
-                    StudentId = student.Id,
-                    ActivityName = $"{record.ActivityName}",
-                    MaxPoints = double.TryParse(record.MaxPoints, out var mp) ? mp : 0,
-                    Points = points,
-                    Status = record.Status,
-                    Period = model.GradingPeriod,
-                    Tag = model.Tag ?? string.Empty // Use the tag from the model or default to empty
-                };
-                _context.Activities.Add(activity);
             }
 
-            // Save all the newly created activities in a single transaction.
+            // Save all changes in a single transaction.
             await _context.SaveChangesAsync();
         }
 

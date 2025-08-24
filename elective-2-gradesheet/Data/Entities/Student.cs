@@ -29,7 +29,7 @@ namespace elective_2_gradesheet.Data.Entities
         [ForeignKey("SectionId")]
         public virtual Section? Section { get; set; }
 
-        public virtual ICollection<Activity> Activities { get; set; } = [];
+        public virtual ICollection<StudentSubmission> Activities { get; set; } = [];
     }
 
     public enum GradingPeriod

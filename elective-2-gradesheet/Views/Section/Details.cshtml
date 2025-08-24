@@ -1,0 +1,112 @@
+@model elective_2_gradesheet.Data.Entities.Section
+
+@{
+    ViewData["Title"] = "Section Details";
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="fas fa-graduation-cap"></i> Section Details: @Model.Name
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <dl class="row">
+                        <dt class="col-sm-3">Section Name:</dt>
+                        <dd class="col-sm-9">@Model.Name</dd>
+                        <dt class="col-sm-3">School Year:</dt>
+                        <dd class="col-sm-9">@Model.SchoolYear</dd>
+                        <dt class="col-sm-3">Status:</dt>
+                        <dd class="col-sm-9">
+                            @if (Model.IsActive)
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inactive</span>
+                            }
+                        </dd>
+                        <dt class="col-sm-3">Students Count:</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge bg-info">@Model.Students.Count</span>
+                        </dd>
+                        <dt class="col-sm-3">Activity Templates:</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge bg-warning">@Model.ActivityTemplates.Count</span>
+                        </dd>
+                    </dl>
+
+                    <div class="d-flex gap-2">
+                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            @if (Model.Students.Any())
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users"></i> Students (@Model.Students.Count)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            @foreach (var student in Model.Students.Take(10))
+                            {
+                                <div class="list-group-item border-0 px-0 py-1">
+                                    <small>@student.GetFullName()</small>
+                                </div>
+                            }
+                            @if (Model.Students.Count > 10)
+                            {
+                                <div class="list-group-item border-0 px-0 py-1">
+                                    <small class="text-muted">... and @(Model.Students.Count - 10) more</small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (Model.ActivityTemplates.Any())
+            {
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-tasks"></i> Activity Templates (@Model.ActivityTemplates.Count)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group list-group-flush">
+                            @foreach (var template in Model.ActivityTemplates.Take(10))
+                            {
+                                <div class="list-group-item border-0 px-0 py-1 d-flex justify-content-between">
+                                    <small>@template.Name</small>
+                                    <small class="text-muted">@template.Period</small>
+                                </div>
+                            }
+                            @if (Model.ActivityTemplates.Count > 10)
+                            {
+                                <div class="list-group-item border-0 px-0 py-1">
+                                    <small class="text-muted">... and @(Model.ActivityTemplates.Count - 10) more</small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

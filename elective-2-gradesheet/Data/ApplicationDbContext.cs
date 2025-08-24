@@ -11,7 +11,8 @@ namespace elective_2_gradesheet.Data
         }
 
         public DbSet<Student> Students { get; set; }
-        public DbSet<Activity> Activities { get; set; }
+        public DbSet<ActivityTemplate> ActivityTemplates { get; set; }
+        public DbSet<StudentSubmission> StudentSubmissions { get; set; }
         public DbSet<Section> Sections { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

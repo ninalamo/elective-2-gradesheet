@@ -18,6 +18,32 @@ builder.Services.AddScoped<ICsvParsingService, CsvParsingService>();
 
 var app = builder.Build();
 
+// Auto-migrate database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try
+    {
+        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+        if (pendingMigrations.Any())
+        {
+            Console.WriteLine($"Applying {pendingMigrations.Count()} pending migrations...");
+            await context.Database.MigrateAsync();
+            Console.WriteLine("Database migrations applied successfully.");
+        }
+        else
+        {
+            Console.WriteLine("Database is up to date.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error during database migration: {ex.Message}");
+        // In production, you might want to handle this differently
+        // For now, we'll continue startup but log the error
+    }
+}
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
