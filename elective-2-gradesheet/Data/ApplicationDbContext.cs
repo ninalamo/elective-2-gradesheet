@@ -27,6 +27,13 @@ namespace elective_2_gradesheet.Data
             modelBuilder.Entity<Section>()
                 .HasIndex(s => new { s.Name, s.SchoolYear })
                 .IsUnique();
+
+            // Prevent multiple cascade paths: disable DB-level cascade from ActivityTemplate -> StudentSubmissions
+            modelBuilder.Entity<StudentSubmission>()
+                .HasOne(ss => ss.ActivityTemplate)
+                .WithMany(at => at.StudentSubmissions)
+                .HasForeignKey(ss => ss.ActivityTemplateId)
+                .OnDelete(DeleteBehavior.NoAction);
         }
     }
 }

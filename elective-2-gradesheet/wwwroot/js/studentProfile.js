@@ -20,6 +20,31 @@ document.addEventListener('DOMContentLoaded', function () {
     var copyRubricButton = editModal.querySelector('#copyRubricButton');
     var prettifyJsonButton = editModal.querySelector('#prettifyJsonButton');
     var resultsTabButton = document.getElementById('results-tab');
+    var useClonedRepoCheckbox = editModal.querySelector('#useClonedRepo');
+    var fileUploadContainer = editModal.querySelector('#fileUploadContainer');
+    var cloneButton = editModal.querySelector('#cloneButton');
+    var checkRepoButton = editModal.querySelector('#checkRepoButton');
+    var clonedRepoInfo = editModal.querySelector('#clonedRepoInfo');
+    var clonedRepoPath = editModal.querySelector('#clonedRepoPath');
+    var githubLinkInput = editModal.querySelector('#editGithubLink');
+    var useClonedRepoCheckbox = editModal.querySelector('#useClonedRepo');
+    var fileUploadContainer = editModal.querySelector('#fileUploadContainer');
+    var cloneButton = editModal.querySelector('#cloneButton');
+    var checkRepoButton = editModal.querySelector('#checkRepoButton');
+    var clonedRepoInfo = editModal.querySelector('#clonedRepoInfo');
+    var clonedRepoPath = editModal.querySelector('#clonedRepoPath');
+    var githubLinkInput = editModal.querySelector('#editGithubLink');
+    var cloneDirectoryInput = editModal.querySelector('#cloneDirectory');
+    var browseDirectoryButton = editModal.querySelector('#browseDirectoryButton');
+    var scanLogText = editModal.querySelector('#scanLogText');
+    var consoleTabButton = document.getElementById('console-tab');
+    var clearScanLogButton = editModal.querySelector('#clearScanLogButton');
+    
+    // Store cloned repository data
+    var clonedRepositoryData = null;
+    
+    // Store activity name element reference globally
+    var activityNameP = null;
 
     const transmutationTable = [
         { min: 100, max: 100, grade: 100 },
@@ -93,6 +118,14 @@ document.addEventListener('DOMContentLoaded', function () {
         checkButton.disabled = fileUpload.files.length === 0 || rubricJson.value.trim() === '';
     }
 
+    function toggleCheckButtons() {
+        if (useClonedRepoCheckbox.checked) {
+            checkRepoButton.disabled = rubricJson.value.trim() === '' || clonedRepoPath.textContent === '';
+        } else {
+            toggleCheckButton();
+        }
+    }
+
     tagSelect.addEventListener('change', function () {
         if (this.value === 'Other') {
             otherTagContainer.style.display = 'block';
@@ -115,6 +148,112 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     rubricJson.addEventListener('input', toggleCheckButton);
+
+    // Handle checkbox to toggle upload visibility
+    useClonedRepoCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            fileUploadContainer.style.display = 'none';
+            fileTreeView.style.display = 'none';
+            checkButton.style.display = 'none';
+            checkRepoButton.style.display = 'inline-block';
+        } else {
+            fileUploadContainer.style.display = 'block';
+            fileTreeView.style.display = 'block';
+            checkButton.style.display = 'inline-block';
+            checkRepoButton.style.display = 'none';
+        }
+        toggleCheckButtons();
+    });
+
+    // Handle browse directory button click
+    browseDirectoryButton.addEventListener('click', function() {
+        // Show a simple dialog to inform user about manual entry
+        // Since browsers don't support direct directory selection without files,
+        // we'll provide a more user-friendly approach
+        
+        const currentValue = cloneDirectoryInput.value.trim();
+        const defaultHint = currentValue || 'D:\\temp\\cloned-repos';
+        
+        // Create a simple prompt for directory path
+        const userPath = prompt(
+            'Enter the directory path where you want to clone the repository:\n\n' +
+            'Examples:\n' +
+            '• D:\\temp\\my-projects\n' +
+            '• C:\\Users\\YourName\\Documents\\repos\n' +
+            '• ./local-repos\n\n' +
+            'Leave empty to use default location.',
+            defaultHint
+        );
+        
+        if (userPath !== null) { // User didn't cancel
+            cloneDirectoryInput.value = userPath.trim();
+        }
+    });
+
+    // Handle clone button click
+    cloneButton.addEventListener('click', async function() {
+        const githubUrl = githubLinkInput.value.trim();
+        if (!githubUrl) {
+            showToast('Please enter a GitHub URL first', 'warning');
+            return;
+        }
+
+        this.disabled = true;
+        this.textContent = 'Cloning...';
+
+        try {
+            const requestBody = { githubUrl: githubUrl };
+            
+            // Add custom output directory if specified
+            const customDirectory = cloneDirectoryInput.value.trim();
+            if (customDirectory) {
+                requestBody.outputDirectory = customDirectory;
+                console.log('Using custom clone directory:', customDirectory);
+            } else {
+                console.log('Using default clone directory');
+            }
+            
+            console.log('Clone request:', requestBody);
+            
+            const response = await fetch('/Home/CloneRepository', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast('Repository cloned successfully! Any existing directory was replaced with fresh clone.', 'success');
+                clonedRepoPath.textContent = result.clonedDirectory;
+                clonedRepoInfo.style.display = 'block';
+                clonedRepositoryData = {
+                    directory: result.clonedDirectory,
+                    repositoryName: result.repositoryName,
+                    treeStructure: result.treeStructure
+                };
+                
+                // Display the tree structure
+                renderRepositoryTree(result.treeStructure, fileTreeView);
+                
+                // Auto-load rubric if available
+                await loadActivityTemplateRubric(activityNameP.textContent);
+                
+                useClonedRepoCheckbox.checked = true;
+                useClonedRepoCheckbox.dispatchEvent(new Event('change'));
+            } else {
+                showToast(result.message, 'danger');
+            }
+        } catch (error) {
+            console.error('Clone error:', error);
+            showToast(`Clone error: ${error.message || error}`, 'danger');
+        } finally {
+            this.disabled = false;
+            this.textContent = 'Clone';
+        }
+    });
 
     copyRubricButton.addEventListener('click', function () {
         rubricJson.select();
@@ -284,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var status = button.getAttribute('data-status');
 
         var activityIdInput = editModal.querySelector('#editActivityId');
-        var activityNameP = editModal.querySelector('#editActivityName');
+        activityNameP = editModal.querySelector('#editActivityName'); // Set global reference
         var activityNameHiddenInput = editModal.querySelector('#editActivityNameInput');
 
         var periodSelect = editModal.querySelector('#editPeriod');
@@ -297,6 +436,7 @@ document.addEventListener('DOMContentLoaded', function () {
         var detailsTab = new bootstrap.Tab(document.getElementById('details-tab'));
         detailsTab.show();
         resultsTabButton.style.display = 'none';
+        consoleTabButton.style.display = 'none';
 
 
         activityIdInput.value = activityId;
@@ -450,4 +590,289 @@ document.addEventListener('DOMContentLoaded', function () {
     if (toastMessageFromTempData && toastMessageFromTempData !== "") {
         showToast(toastMessageFromTempData, toastTypeFromTempData);
     }
+
+    // Repository tree rendering function
+    function renderRepositoryTree(treeNode, container) {
+        container.innerHTML = '';
+        const ul = document.createElement('ul');
+        ul.className = 'tree-container';
+        renderRepositoryNode(treeNode, ul);
+        container.appendChild(ul);
+        container.style.display = 'block';
+    }
+
+    function renderRepositoryNode(node, parentElement) {
+        const li = document.createElement('li');
+        li.className = 'tree-node';
+        
+        const nodeName = document.createElement('span');
+        nodeName.className = 'node-name';
+        nodeName.textContent = node.name;
+        
+        const removeBtn = document.createElement('span');
+        removeBtn.className = 'remove-btn';
+        removeBtn.textContent = 'x';
+        removeBtn.onclick = async function (e) {
+            e.stopPropagation();
+            await removeRepositoryItem(node.path || '');
+        };
+        
+        if (node.type === 'file') {
+            li.classList.add('node-file');
+            li.appendChild(nodeName);
+            li.appendChild(removeBtn);
+        } else if (node.type === 'directory') {
+            li.classList.add('expanded');
+            const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'children';
+            
+            if (node.children && node.children.length > 0) {
+                node.children.forEach(child => {
+                    renderRepositoryNode(child, childrenContainer);
+                });
+            }
+            
+            nodeName.onclick = function () {
+                li.classList.toggle('expanded');
+            };
+            
+            li.appendChild(nodeName);
+            li.appendChild(removeBtn);
+            
+            if (childrenContainer.children.length > 0) {
+                const ul = document.createElement('ul');
+                ul.className = 'tree-container';
+                ul.appendChild(childrenContainer);
+                li.appendChild(ul);
+            }
+        }
+        
+        parentElement.appendChild(li);
+    }
+
+    // Remove repository item function
+    async function removeRepositoryItem(relativePath) {
+        if (!clonedRepositoryData || !relativePath) {
+            showToast('Cannot remove item: no repository data available', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/Home/RemoveRepositoryItem', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    clonedDirectory: clonedRepositoryData.directory,
+                    relativePath: relativePath
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast(result.message, 'success');
+                // Update the tree structure
+                clonedRepositoryData.treeStructure = result.treeStructure;
+                renderRepositoryTree(result.treeStructure, fileTreeView);
+            } else {
+                showToast(result.message, 'danger');
+            }
+        } catch (error) {
+            console.error('Remove item error:', error);
+            showToast(`Remove item error: ${error.message || error}`, 'danger');
+        }
+    }
+
+    // Load activity template rubric function
+    async function loadActivityTemplateRubric(activityName) {
+        try {
+            const response = await fetch('/Home/GetActivityTemplateRubric', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ activityName: activityName })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                rubricJson.value = result.rubricJson;
+                showToast('Activity rubric loaded automatically', 'info');
+                toggleCheckButtons();
+            }
+        } catch (error) {
+            console.log('No rubric found for activity:', activityName);
+        }
+    }
+
+    // Check repository button functionality
+    checkRepoButton.addEventListener('click', async function () {
+        if (!clonedRepositoryData) {
+            showToast('No cloned repository available', 'warning');
+            return;
+        }
+        
+        if (pointsInput.value !== "0") {
+            showToast("Scoring is only available for activities with zero points.", "info");
+            return;
+        }
+
+        try {
+            const rubric = JSON.parse(rubricJson.value);
+            const totalPoints = rubric.reduce((sum, item) => sum + Number(item.points), 0);
+
+            if (totalPoints !== 100) {
+                showToast(`Rubric points must total 100. Current total: ${totalPoints}`, 'danger');
+                return;
+            }
+        } catch (e) {
+            showToast('Invalid JSON format. Please correct it before checking.', 'danger');
+            return;
+        }
+
+        // Clear scan log and start logging
+        clearScanLog();
+        appendToScanLog('=== Repository Scoring Started ===');
+        appendToScanLog(`Repository: ${clonedRepositoryData.directory}`);
+        appendToScanLog(`Rubric criteria count: ${JSON.parse(rubricJson.value).length}`);
+        appendToScanLog('');
+
+        this.disabled = true;
+        const originalText = this.textContent;
+        this.textContent = 'Checking...';
+
+        try {
+            const response = await fetch('/Home/ScoreRepositoryActivity', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    clonedDirectory: clonedRepositoryData.directory,
+                    rubricJson: rubricJson.value
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Display detailed scan logs in textarea
+                    if (data.scanLog && data.scanLog.length > 0) {
+                        data.scanLog.forEach(logEntry => {
+                            appendToScanLog(logEntry);
+                        });
+                        appendToScanLog('');
+                    }
+                    
+                    appendToScanLog(`=== Scoring Complete ===`);
+                    appendToScanLog(`Total Score: ${data.totalScore}/100`);
+                    appendToScanLog('');
+                    
+                    pointsInput.value = data.totalScore;
+                    calculateTransmutedGrade();
+                    
+                    scoringResultsTable.innerHTML = '';
+                    data.results.forEach(result => {
+                        let row = scoringResultsTable.insertRow();
+                        row.className = result.met ? 'table-success' : 'table-danger';
+                        let metCell = row.insertCell();
+                        metCell.innerHTML = result.met ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-danger"></i>';
+                        row.insertCell().textContent = result.fileName;
+                        row.insertCell().textContent = result.criterion;
+                        row.insertCell().textContent = result.points;
+                        let proofCell = row.insertCell();
+                        const proofText = result.proof || "N/A";
+                        proofCell.innerHTML = `<pre><code>${proofText}</code></pre>`;
+                    });
+                    
+                    resultsTabButton.style.display = 'block';
+                    consoleTabButton.style.display = 'block';
+                    var resultsTab = new bootstrap.Tab(resultsTabButton);
+                    resultsTab.show();
+                    
+                    // Create message about scanned directories
+                    let scanMessage = `Repository scoring complete. Total points: ${data.totalScore}`;
+                    if (data.projectCount && data.scannedDirectories) {
+                        if (data.projectCount > 1) {
+                            scanMessage += `\n\nScanned ${data.projectCount} .csproj project directories:`;
+                            data.scannedDirectories.forEach(dir => {
+                                const dirName = dir || '[root]';
+                                scanMessage += `\n• ${dirName}`;
+                            });
+                        } else if (data.projectCount === 1) {
+                            const dirName = data.scannedDirectories[0] || '[root]';
+                            if (dirName !== '[root]') {
+                                scanMessage += `\n\nScanned project directory: ${dirName}`;
+                            } else {
+                                scanMessage += `\n\nNo .csproj file found, scanned entire repository`;
+                            }
+                        }
+                    }
+                    
+                    showToast(scanMessage, "success");
+                } else {
+                    appendToScanLog(`Error: ${data.message}`);
+                    showToast(data.message, 'danger');
+                }
+            } else {
+                // Try to get error details from response
+                try {
+                    const error = await response.json();
+                    appendToScanLog(`HTTP Error: ${error.message || 'Unknown error'}`);
+                    showToast(`Repository scoring error: ${error.message || 'Unknown error'}`, "danger");
+                } catch {
+                    appendToScanLog(`HTTP Error: ${response.status} ${response.statusText}`);
+                    showToast(`Repository scoring error: HTTP ${response.status} ${response.statusText}`, "danger");
+                }
+            }
+        } catch (error) {
+            console.error('Repository scoring error:', error);
+            appendToScanLog(`Network Error: ${error.message || error}`);
+            showToast(`Repository scoring error: ${error.message || error}`, "danger");
+        } finally {
+            this.disabled = false;
+            this.textContent = originalText;
+        }
+    });
+
+    // Scan log functions for textarea
+    function appendToScanLog(message) {
+        if (!scanLogText) {
+            console.log('Scan log textarea not found:', message);
+            return;
+        }
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const currentContent = scanLogText.value;
+        const newLine = currentContent ? '\n' : '';
+        scanLogText.value = currentContent + newLine + `[${timestamp}] ${message}`;
+        
+        // Auto-scroll to bottom
+        scanLogText.scrollTop = scanLogText.scrollHeight;
+    }
+    
+    function clearScanLog() {
+        if (!scanLogText) {
+            console.log('Scan log textarea not found for clearing');
+            return;
+        }
+        scanLogText.value = 'Scan log cleared...\n';
+    }
+    
+    // Clear scan log button functionality
+    if (clearScanLogButton) {
+        clearScanLogButton.addEventListener('click', clearScanLog);
+    } else {
+        console.log('Clear scan log button not found');
+    }
+    
+    // Update rubric change listener to also toggle repo check button
+    rubricJson.addEventListener('input', function() {
+        toggleCheckButton();
+        toggleCheckButtons();
+    });
 });

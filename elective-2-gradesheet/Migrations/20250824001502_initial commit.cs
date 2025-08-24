@@ -102,7 +102,7 @@ namespace elective_2_gradesheet.Migrations
                         column: x => x.ActivityTemplateId,
                         principalTable: "ActivityTemplates",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        onDelete: ReferentialAction.NoAction);
                     table.ForeignKey(
                         name: "FK_StudentSubmissions_Students_StudentId",
                         column: x => x.StudentId,

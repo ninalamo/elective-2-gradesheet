@@ -138,6 +138,9 @@
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="results-tab" data-bs-toggle="tab" data-bs-target="#results" type="button" role="tab" aria-controls="results" aria-selected="false" style="display: none;">Scoring Results</button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="console-tab" data-bs-toggle="tab" data-bs-target="#console" type="button" role="tab" aria-controls="console" aria-selected="false" style="display: none;">Scan Log</button>
+                            </li>
                         </ul>
                         <div class="tab-content" id="myTabContent">
                             <div class="tab-pane fade show active" id="details" role="tabpanel" aria-labelledby="details-tab">
@@ -175,7 +178,30 @@
 
                                         <div class="mb-3" id="githubLinkContainer">
                                             <label for="editGithubLink" class="form-label">Github Link</label>
-                                            <input type="text" id="editGithubLink" name="githubLink" class="form-control" />
+                                            <div class="input-group">
+                                                <input type="text" id="editGithubLink" name="githubLink" class="form-control" />
+                                                <button type="button" id="cloneButton" class="btn btn-outline-primary">Clone</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="mb-3" id="cloneDirectoryContainer">
+                                            <label for="cloneDirectory" class="form-label">Clone Output Directory (optional)</label>
+                                            <div class="input-group">
+                                                <input type="text" id="cloneDirectory" name="cloneDirectory" class="form-control" placeholder="Leave blank for default location" />
+                                                <button type="button" id="browseDirectoryButton" class="btn btn-outline-secondary">
+                                                    <i class="fas fa-folder-open"></i> Browse
+                                                </button>
+                                            </div>
+                                            <div class="form-text">Default location: ~/GradesheetClones/[repository-name]</div>
+                                        </div>
+
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" id="useClonedRepo" />
+                                                <label class="form-check-label" for="useClonedRepo">
+                                                    Use cloned repository (hides file upload)
+                                                </label>
+                                            </div>
                                         </div>
 
                                         <div class="row">
@@ -216,11 +242,14 @@
                                         </div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="mb-3">
+                                        <div class="mb-3" id="fileUploadContainer">
                                             <label for="fileUpload" class="form-label">Upload Files</label>
                                             <input type="file" id="fileUpload" class="form-control" multiple webkitdirectory>
                                         </div>
                                         <div id="fileTreeView"></div>
+                                        <div id="clonedRepoInfo" class="alert alert-info" style="display: none;">
+                                            <strong>Cloned Repository:</strong> <span id="clonedRepoPath"></span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -323,11 +352,25 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="tab-pane fade" id="console" role="tabpanel" aria-labelledby="console-tab">
+                                <div class="card mt-3">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">Scan Log</h5>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearScanLogButton">
+                                            <i class="fas fa-trash"></i> Clear Log
+                                        </button>
+                                    </div>
+                                    <div class="card-body">
+                                        <textarea id="scanLogText" class="form-control" rows="20" readonly style="font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 12px; background-color: #f8f9fa;">Scan log will appear here when you run a repository check...</textarea>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                         <button type="button" id="checkButton" class="btn btn-success" disabled>Check</button>
+                        <button type="button" id="checkRepoButton" class="btn btn-info" disabled style="display: none;">Check (Repo)</button>
                         <button type="submit" class="btn btn-primary">Save changes</button>
                     </div>
                 </form>
