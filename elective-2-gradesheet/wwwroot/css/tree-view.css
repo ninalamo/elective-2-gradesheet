@@ -1,40 +1,64 @@
+/* Professional Academic Tree View */
 .tree-container {
     list-style-type: none;
-    padding-left: 20px;
+    padding-left: 1.25rem;
     margin-bottom: 1rem;
-    border: 1px solid #dee2e6;
-    border-radius: 0.25rem;
-    padding: 10px;
-    max-height: 200px; /* Added max-height for better layout */
-    overflow-y: auto; /* Added scroll for overflow */
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: #ffffff;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.tree-node {
+    margin: 0.25rem 0;
 }
 
 .tree-node .node-name {
     cursor: pointer;
-    padding: 2px 5px;
-    border-radius: 0.2rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    transition: all 0.15s ease;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #334155;
+    display: inline-flex;
+    align-items: center;
 }
 
-    .tree-node .node-name:hover {
-        background-color: #f0f0f0;
-    }
+.tree-node .node-name:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+    color: #1e2a4a;
+}
 
 .tree-node.node-file .node-name {
     cursor: default;
+    color: #64748b;
+}
+
+.tree-node.node-file .node-name:hover {
+    background-color: rgba(100, 116, 139, 0.05);
 }
 
 .tree-node .node-name::before {
-    content: '📁';
-    margin-right: 5px;
+    content: '\1F4C1';
+    margin-right: 0.5rem;
+    font-size: 1rem;
 }
 
 .tree-node.node-file .node-name::before {
-    content: '📄';
-    margin-right: 5px;
+    content: '\1F4C4';
+    margin-right: 0.5rem;
+    font-size: 1rem;
 }
 
 .tree-node .children {
     display: none;
+    margin-left: 1rem;
+    padding-left: 1rem;
+    border-left: 2px solid #e2e8f0;
 }
 
 .tree-node.expanded > .children {
@@ -42,51 +66,159 @@
 }
 
 .remove-btn {
-    margin-left: 10px;
+    margin-left: 0.75rem;
     cursor: pointer;
-    color: #dc3545;
-    font-weight: bold;
-    padding: 0 5px;
-    border-radius: 50%;
+    color: #dc2626;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    transition: all 0.15s ease;
+    background-color: transparent;
+    border: 1px solid transparent;
 }
 
-    .remove-btn:hover {
-        background-color: #f8d7da;
-    }
+.remove-btn:hover {
+    background-color: rgba(220, 38, 38, 0.1);
+    border-color: rgba(220, 38, 38, 0.2);
+}
 
+/* Professional Academic Scoring Results */
 #scoringResultsContainer {
-    margin-top: 1.5rem; /* Added margin for separation */
+    margin-top: 2rem;
 }
 
-#scoringResultsTable th, #scoringResultsTable td {
-    text-align: center; /* Centered the table content */
+#scoringResultsTable {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    font-size: 0.875rem;
+}
+
+#scoringResultsTable th {
+    background: linear-gradient(135deg, #1e2a4a 0%, #334155 100%);
+    color: #ffffff;
+    font-weight: 600;
+    padding: 1rem 0.875rem;
+    text-align: center;
     vertical-align: middle;
+    border: none;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-/* Added for tab spacing */
+#scoringResultsTable td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.875rem;
+    border-color: #e2e8f0;
+}
+
+#scoringResultsTable tbody tr:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Professional Tab Styling */
 .tab-content {
-    padding-top: 1rem;
+    padding-top: 1.5rem;
 }
 
+.nav-tabs {
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    border-radius: 0.5rem 0.5rem 0 0;
+    color: #64748b;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    margin-right: 0.25rem;
+    transition: all 0.15s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    background-color: rgba(59, 130, 246, 0.05);
+    color: #1e2a4a;
+    border-color: transparent;
+}
+
+.nav-tabs .nav-link.active {
+    background-color: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
+}
+
+/* Professional Code Styling */
 #scoringResultsTable pre {
     text-align: left;
     white-space: pre-wrap;
     word-break: break-all;
-    background-color: #f8f9fa;
-    padding: 10px;
-    border-radius: 0.25rem;
+    background-color: #f8fafc;
+    color: #334155;
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    border: 1px solid #e2e8f0;
+    font-size: 0.8125rem;
+    margin: 0;
+    font-family: 'Fira Code', 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
 }
 
 #rubricJson {
-    font-family: 'Courier New', Courier, monospace;
+    font-family: 'Fira Code', 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
     tab-size: 4;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
+    background-color: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    color: #334155;
 }
 
+#rubricJson:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+    background-color: #ffffff;
+}
+
+/* Professional Status Icons */
 .fa-check-circle {
-    color: #198754; /* Green for success */
+    color: #059669;
+    font-size: 1.125rem;
 }
 
 .fa-times-circle {
-    color: #dc3545; /* Red for failure */
+    color: #dc2626;
+    font-size: 1.125rem;
+}
+
+/* Academic Table Row States */
+.table-success {
+    background-color: rgba(5, 150, 105, 0.1) !important;
+    border-color: rgba(5, 150, 105, 0.2) !important;
+}
+
+.table-danger {
+    background-color: rgba(220, 38, 38, 0.1) !important;
+    border-color: rgba(220, 38, 38, 0.2) !important;
+}
+
+/* Professional Console/Log Styling */
+#scanLogText {
+    font-family: 'Fira Code', 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+    font-size: 0.8125rem;
+    background-color: #0f172a;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    min-height: 200px;
+    resize: vertical;
+}
+
+#scanLogText:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+    outline: none;
 }

@@ -1,4 +1,24 @@
-/* General Body and HTML */
+/* Professional Academic Design System */
+:root {
+    /* Primary Academic Color Palette */
+    --primary-navy: #1e2a4a;
+    --primary-slate: #334155;
+    --primary-gray: #64748b;
+    --light-gray: #f1f5f9;
+    --accent-blue: #3b82f6;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --border-light: #e2e8f0;
+    --border-medium: #cbd5e1;
+    --success: #059669;
+    --warning: #d97706;
+    --error: #dc2626;
+    --info: #0284c7;
+    --surface: #ffffff;
+    --surface-elevated: #f8fafc;
+}
+
 html {
     font-size: 14px;
     position: relative;
@@ -7,20 +27,23 @@ html {
 
 @media (min-width: 768px) {
     html {
-        font-size: 15px; /* Slightly reduced base font size */
+        font-size: 16px;
     }
 }
 
 body {
     margin-bottom: 60px;
-    background-color: #f0f2f5; /* Light gray background for a clean base */
-    font-family: 'Inter', sans-serif; /* Keep Inter font */
-    color: #333333; /* Darker gray for body text */
+    background-color: var(--light-gray);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--text-primary);
+    line-height: 1.6;
+    font-weight: 400;
 }
 
 /* Focus States */
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-    box-shadow: 0 0 0 0.1rem rgba(60, 179, 113, 0.2), 0 0 0 0.25rem rgba(60, 179, 113, 0.3); /* Focus ring based on a subtle green */
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+    outline: none;
 }
 
 /* Footer */
@@ -30,211 +53,444 @@ body {
     width: 100%;
     white-space: nowrap;
     line-height: 60px;
-    background-color: #e9ecef;
-    border-top: 1px solid #dee2e6;
+    background-color: var(--surface);
+    border-top: 1px solid var(--border-light);
     text-align: center;
-    font-size: 0.85rem; /* Smaller footer text */
-    color: #6c757d;
+    font-size: 0.875rem;
+    color: var(--text-muted);
 }
 
-/* Custom Navbar Styles */
+/* Professional Navbar */
 .bg-dark-gradient {
-    background: linear-gradient(to right, #1a1a1a, #282828); /* Dark, almost black gradient for a sleek look */
-    border-color: rgba(0,0,0,0.1) !important;
+    background: linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-slate) 100%);
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .navbar-brand {
-    font-weight: 600;
-    color: #1DB954 !important; /* Spotify green for brand */
-    padding: 0.5rem 1rem;
-    border-radius: 0.25rem; /* Sharper corners */
-    transition: transform 0.2s ease-in-out;
+    font-weight: 700;
+    color: var(--surface) !important;
+    font-size: 1.25rem;
+    letter-spacing: -0.025em;
+    transition: all 0.2s ease;
 }
 
-    .navbar-brand:hover {
-        transform: scale(1.02);
-    }
+.navbar-brand:hover {
+    color: var(--accent-blue) !important;
+    transform: none;
+}
 
 .navbar-nav .nav-link {
-    color: #b3b3b3 !important; /* Lighter gray for nav links */
-    padding: 0.4rem 0.8rem !important;
-    border-radius: 0.25rem; /* Sharper corners */
-    transition: background-color 0.3s ease, color 0.3s ease;
-    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.85) !important;
+    padding: 0.5rem 1rem !important;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border-radius: 0.375rem;
+    margin: 0 0.125rem;
 }
 
-    .navbar-nav .nav-link:hover, .navbar-nav .nav-link.active {
-        background-color: rgba(255, 255, 255, 0.08); /* Subtle hover/active on dark background */
-        color: #ffffff !important;
-    }
+.navbar-nav .nav-link:hover, .navbar-nav .nav-link.active {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: var(--surface) !important;
+}
 
 .rounded-bottom-lg {
-    border-bottom-left-radius: 0.5rem !important; /* Less pronounced rounding */
-    border-bottom-right-radius: 0.5rem !important;
+    border-radius: 0;
 }
 
-/* General Card and Button Enhancements */
+/* Professional Cards */
 .card {
-    border-radius: 0.375rem; /* Slightly rounded, more corporate */
-    box-shadow: 0 0.15rem 0.4rem rgba(0, 0, 0, 0.03); /* Even softer, lighter shadow */
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-light);
+    background-color: var(--surface);
     overflow: hidden;
-    border: 1px solid #dcdcdc; /* Subtle border */
 }
 
 .card-header {
-    border-top-left-radius: 0.375rem !important;
-    border-top-right-radius: 0.375rem !important;
-    background-color: #36454F; /* Charcoal gray for card headers */
-    color: white;
+    background: linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-slate) 100%);
+    color: var(--surface);
     font-weight: 600;
-    padding: 0.8rem 1.25rem; /* Reduced padding */
-    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1rem 1.5rem;
+    border-bottom: none;
+    border-radius: 0;
 }
 
-    .card-header h1, .card-header h2, .card-header h3, .card-header h4, .card-header h5 {
-        color: white !important;
-        font-size: 1.15rem; /* Smaller heading size */
-    }
+.card-header h1, .card-header h2, .card-header h3, .card-header h4, .card-header h5, .card-header h6 {
+    color: var(--surface) !important;
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0;
+}
 
-/* Button Styles */
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Professional Button Styles */
 .btn {
-    border-radius: 0.25rem; /* Sharper corners for general buttons */
-    transition: all 0.2s ease;
+    border-radius: 0.375rem;
+    transition: all 0.15s ease;
     font-weight: 500;
-    padding: 0.5rem 0.9rem; /* Reduced padding */
-    font-size: 0.85rem; /* Smaller button text */
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    letter-spacing: 0.025em;
+    border-width: 1px;
+    text-decoration: none;
 }
 
 .btn-primary {
-    background-color: #1DB954; /* Spotify green */
-    border-color: #1DB954;
-    color: #ffffff;
+    background-color: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: var(--surface);
 }
 
-    .btn-primary:hover {
-        background-color: #179a45; /* Darker Spotify green */
-        border-color: #179a45;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(29, 185, 84, 0.2);
-    }
-
-.btn-warning {
-    background-color: #ff9800; /* Standard orange for warning */
-    border-color: #ff9800;
-    color: #333333; /* Dark text for contrast */
+.btn-primary:hover, .btn-primary:focus {
+    background-color: #2563eb;
+    border-color: #2563eb;
+    color: var(--surface);
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.25);
 }
-
-    .btn-warning:hover {
-        background-color: #e68a00;
-        border-color: #e68a00;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(255, 152, 0, 0.2);
-    }
-
-.btn-success {
-    background-color: #4CAF50; /* Standard green for success */
-    border-color: #4CAF50;
-    color: #ffffff;
-}
-
-    .btn-success:hover {
-        background-color: #45a049;
-        border-color: #45a049;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
-    }
-
-.btn-info {
-    background-color: #03A9F4; /* Standard light blue for info */
-    border-color: #03A9F4;
-    color: #ffffff;
-}
-
-    .btn-info:hover {
-        background-color: #039BE5;
-        border-color: #039BE5;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(3, 169, 244, 0.2);
-    }
 
 .btn-secondary {
-    background-color: #6c757d; /* Standard secondary gray */
-    border-color: #6c757d;
-    color: #ffffff;
+    background-color: var(--primary-gray);
+    border-color: var(--primary-gray);
+    color: var(--surface);
 }
 
-    .btn-secondary:hover {
-        background-color: #5a6268;
-        border-color: #5a6268;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(108, 117, 125, 0.15);
-    }
+.btn-secondary:hover, .btn-secondary:focus {
+    background-color: var(--primary-slate);
+    border-color: var(--primary-slate);
+    color: var(--surface);
+    box-shadow: 0 2px 4px rgba(100, 116, 139, 0.25);
+}
+
+.btn-success {
+    background-color: var(--success);
+    border-color: var(--success);
+    color: var(--surface);
+}
+
+.btn-success:hover, .btn-success:focus {
+    background-color: #047857;
+    border-color: #047857;
+    color: var(--surface);
+    box-shadow: 0 2px 4px rgba(5, 150, 105, 0.25);
+}
+
+.btn-warning {
+    background-color: var(--warning);
+    border-color: var(--warning);
+    color: var(--surface);
+}
+
+.btn-warning:hover, .btn-warning:focus {
+    background-color: #c2410c;
+    border-color: #c2410c;
+    color: var(--surface);
+    box-shadow: 0 2px 4px rgba(217, 119, 6, 0.25);
+}
+
+.btn-danger {
+    background-color: var(--error);
+    border-color: var(--error);
+    color: var(--surface);
+}
+
+.btn-danger:hover, .btn-danger:focus {
+    background-color: #b91c1c;
+    border-color: #b91c1c;
+    color: var(--surface);
+    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.25);
+}
+
+.btn-info {
+    background-color: var(--info);
+    border-color: var(--info);
+    color: var(--surface);
+}
+
+.btn-info:hover, .btn-info:focus {
+    background-color: #0369a1;
+    border-color: #0369a1;
+    color: var(--surface);
+    box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25);
+}
 
 .btn-outline-primary {
-    border-radius: 0.25rem;
-    padding: 0.5rem 0.9rem;
-    font-size: 0.85rem;
-    color: #1DB954; /* Spotify green outline */
-    border-color: #1DB954;
+    background-color: transparent;
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
 }
 
-    .btn-outline-primary:hover {
-        background-color: #1DB954;
-        color: white;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 4px rgba(29, 185, 84, 0.1);
-    }
+.btn-outline-primary:hover, .btn-outline-primary:focus {
+    background-color: var(--accent-blue);
+    border-color: var(--accent-blue);
+    color: var(--surface);
+}
 
-/* Form Control Enhancements */
+.btn-outline-secondary {
+    background-color: transparent;
+    border-color: var(--primary-gray);
+    color: var(--primary-gray);
+}
+
+.btn-outline-secondary:hover, .btn-outline-secondary:focus {
+    background-color: var(--primary-gray);
+    border-color: var(--primary-gray);
+    color: var(--surface);
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+/* Professional Form Controls */
 .form-control, .form-select {
-    border-radius: 0.25rem;
-    padding: 0.5rem 0.8rem;
-    border: 1px solid #ced4da;
-    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-    font-size: 0.85rem;
+    border-radius: 0.375rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border-medium);
+    transition: all 0.15s ease;
+    font-size: 0.875rem;
+    background-color: var(--surface);
+    color: var(--text-primary);
 }
 
-    .form-control:focus, .form-select:focus {
-        border-color: #1DB954; /* Focus border in Spotify green */
-        box-shadow: 0 0 0 0.1rem rgba(29, 185, 84, 0.15); /* Softer shadow based on Spotify green */
-    }
+.form-control:focus, .form-select:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.15);
+    background-color: var(--surface);
+    outline: none;
+}
 
-/* Table Enhancements */
+.form-label {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.form-text {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}
+
+/* Professional Tables */
 .table {
-    border-radius: 0.25rem;
+    border-radius: 0.5rem;
     overflow: hidden;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--border-light);
+    background-color: var(--surface);
+    margin-bottom: 0;
+    font-size: 0.875rem;
 }
 
-    .table thead.thead-dark th {
-        background-color: #36454F; /* Charcoal gray for table headers */
-        color: white;
-        border-color: #4a5560;
-        padding: 0.7rem 0.9rem;
-        font-size: 0.85rem;
-    }
+.table thead th {
+    background: linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-slate) 100%);
+    color: var(--surface);
+    font-weight: 600;
+    padding: 1rem;
+    border: none;
+    font-size: 0.8125rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.table tbody td {
+    padding: 0.875rem 1rem;
+    border-color: var(--border-light);
+    vertical-align: middle;
+}
 
 .table-striped tbody tr:nth-of-type(odd) {
-    background-color: #fcfcfc; /* Very light stripe */
+    background-color: var(--surface-elevated);
 }
 
 .table-hover tbody tr:hover {
-    background-color: #eef1f4; /* Subtle hover effect */
+    background-color: rgba(59, 130, 246, 0.05);
+}
+
+.table-bordered {
+    border: 1px solid var(--border-light);
 }
 
 .table-bordered th, .table-bordered td {
-    border-color: #e9ecef;
+    border: 1px solid var(--border-light);
 }
 
-/* Badges */
+/* Professional Academic Badges */
 .badge {
-    border-radius: 50rem !important; /* Keep full pill shape */
-    padding: 0.3em 0.6em;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
     font-weight: 600;
-    font-size: 0.75em;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-/* Toast Notifications - Adjusted to corporate palette */
+.badge-primary {
+    background-color: var(--accent-blue);
+    color: var(--surface);
+}
+
+.badge-secondary {
+    background-color: var(--primary-gray);
+    color: var(--surface);
+}
+
+.badge-success {
+    background-color: var(--success);
+    color: var(--surface);
+}
+
+.badge-warning {
+    background-color: var(--warning);
+    color: var(--surface);
+}
+
+.badge-danger {
+    background-color: var(--error);
+    color: var(--surface);
+}
+
+.badge-info {
+    background-color: var(--info);
+    color: var(--surface);
+}
+
+/* Academic Status Indicators */
+.status-submitted {
+    background-color: rgba(5, 150, 105, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(5, 150, 105, 0.3);
+}
+
+.status-missing {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: var(--error);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.status-pending {
+    background-color: rgba(217, 119, 6, 0.1);
+    color: var(--warning);
+    border: 1px solid rgba(217, 119, 6, 0.3);
+}
+
+.status-graded {
+    background-color: rgba(2, 132, 199, 0.1);
+    color: var(--info);
+    border: 1px solid rgba(2, 132, 199, 0.3);
+}
+
+/* Professional Typography */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.75rem; }
+h3 { font-size: 1.5rem; }
+h4 { font-size: 1.25rem; }
+h5 { font-size: 1.125rem; }
+h6 { font-size: 1rem; }
+
+.text-primary { color: var(--text-primary) !important; }
+.text-secondary { color: var(--text-secondary) !important; }
+.text-muted { color: var(--text-muted) !important; }
+
+/* Academic Progress Bars */
+.progress {
+    height: 0.5rem;
+    border-radius: 0.375rem;
+    background-color: var(--border-light);
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--accent-blue) 0%, #2563eb 100%);
+    border-radius: 0.375rem;
+}
+
+/* Academic Alert Styles */
+.alert {
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.alert-primary {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.2);
+    color: var(--accent-blue);
+}
+
+.alert-success {
+    background-color: rgba(5, 150, 105, 0.1);
+    border-color: rgba(5, 150, 105, 0.2);
+    color: var(--success);
+}
+
+.alert-warning {
+    background-color: rgba(217, 119, 6, 0.1);
+    border-color: rgba(217, 119, 6, 0.2);
+    color: var(--warning);
+}
+
+.alert-danger {
+    background-color: rgba(220, 38, 38, 0.1);
+    border-color: rgba(220, 38, 38, 0.2);
+    color: var(--error);
+}
+
+.alert-info {
+    background-color: rgba(2, 132, 199, 0.1);
+    border-color: rgba(2, 132, 199, 0.2);
+    color: var(--info);
+}
+
+/* Professional Modal Styles */
+.modal-content {
+    border-radius: 0.75rem;
+    border: none;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--primary-navy) 0%, var(--primary-slate) 100%);
+    color: var(--surface);
+    border-radius: 0.75rem 0.75rem 0 0;
+    border-bottom: none;
+    padding: 1.25rem 1.5rem;
+}
+
+.modal-header .modal-title {
+    color: var(--surface);
+    font-weight: 600;
+    font-size: 1.125rem;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-light);
+    padding: 1rem 1.5rem;
+}
+
+/* Toast Notifications - Professional Academic */
 .toast-container {
     z-index: 1080;
 }
@@ -259,46 +515,45 @@ body {
     font-size: 0.85rem;
 }
 
-/* Corporate Toast Colors */
+/* Professional Toast Colors */
 .toast.text-bg-success .toast-header {
-    background-color: #1DB954;
-    color: white;
+    background-color: var(--success);
+    color: var(--surface);
 }
-/* Spotify green */
+
 .toast.text-bg-info .toast-header {
-    background-color: #03A9F4;
-    color: white;
+    background-color: var(--info);
+    color: var(--surface);
 }
-/* Sky blue info */
+
 .toast.text-bg-warning .toast-header {
-    background-color: #ff9800;
-    color: white;
+    background-color: var(--warning);
+    color: var(--surface);
 }
-/* Orange warning */
+
 .toast.text-bg-danger .toast-header {
-    background-color: #f44336;
-    color: white;
+    background-color: var(--error);
+    color: var(--surface);
 }
-/* Red danger */
 
 .toast.text-bg-success {
-    background-color: #e6f6ed;
-    color: #179a45;
+    background-color: rgba(5, 150, 105, 0.1);
+    color: var(--success);
 }
 
 .toast.text-bg-info {
-    background-color: #e1f5fe;
-    color: #0288d1;
+    background-color: rgba(2, 132, 199, 0.1);
+    color: var(--info);
 }
 
 .toast.text-bg-warning {
-    background-color: #fff3e0;
-    color: #e65100;
+    background-color: rgba(217, 119, 6, 0.1);
+    color: var(--warning);
 }
 
 .toast.text-bg-danger {
-    background-color: #ffebee;
-    color: #d32f2f;
+    background-color: rgba(220, 38, 38, 0.1);
+    color: var(--error);
 }
 
 /* Spinner inside toast - ensure it's visible */
