@@ -15,6 +15,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IGradeService, GradeService>();
 builder.Services.AddScoped<ICsvParsingService, CsvParsingService>(); 
 builder.Services.AddScoped<IGitService, GitService>();
+builder.Services.AddScoped<IActivityTemplateService, ActivityTemplateService>();
 
 
 var app = builder.Build();

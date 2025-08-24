@@ -1,0 +1,142 @@
+@model elective_2_gradesheet.Data.Entities.ActivityTemplate
+@{
+    ViewData["Title"] = "Delete Activity Template";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-danger"><i class="fas fa-trash"></i> Delete Activity Template</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="alert alert-danger">
+    <h4>Are you sure you want to delete this activity template?</h4>
+    <p>This action will <strong>deactivate</strong> the template (soft delete). It will no longer appear in the active list but will be preserved for data integrity.</p>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5><i class="fas fa-info-circle"></i> Template Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Name:</dt>
+                    <dd class="col-sm-9"><strong>@Model.Name</strong></dd>
+
+                    <dt class="col-sm-3">Section:</dt>
+                    <dd class="col-sm-9">@Model.Section?.Name</dd>
+
+                    <dt class="col-sm-3">Period:</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge bg-secondary">@Model.Period.ToString()</span>
+                    </dd>
+
+                    <dt class="col-sm-3">Max Points:</dt>
+                    <dd class="col-sm-9">@Model.MaxPoints.ToString("F1")</dd>
+
+                    @if (!string.IsNullOrEmpty(Model.Tag))
+                    {
+                        <dt class="col-sm-3">Tag:</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge bg-info text-dark">@Model.Tag</span>
+                        </dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.Description))
+                    {
+                        <dt class="col-sm-3">Description:</dt>
+                        <dd class="col-sm-9">@Model.Description</dd>
+                    }
+
+                    <dt class="col-sm-3">Has Rubric:</dt>
+                    <dd class="col-sm-9">
+                        @if (!string.IsNullOrEmpty(Model.RubricJson))
+                        {
+                            <span class="badge bg-success">
+                                <i class="fas fa-check"></i> Yes
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">
+                                <i class="fas fa-times"></i> No
+                            </span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Created:</dt>
+                    <dd class="col-sm-9">@Model.CreatedDate.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                    <dt class="col-sm-3">Last Updated:</dt>
+                    <dd class="col-sm-9">@Model.UpdatedDate.ToString("yyyy-MM-dd HH:mm")</dd>
+                </dl>
+
+                <div class="mt-4">
+                    <form asp-action="Delete" method="post" class="d-inline">
+                        <input type="hidden" asp-for="Id" />
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this activity template? This action will deactivate the template.')">
+                            <i class="fas fa-trash"></i> Yes, Delete Template
+                        </button>
+                    </form>
+                    <a asp-action="Index" class="btn btn-secondary ms-2">
+                        <i class="fas fa-times"></i> Cancel
+                    </a>
+                    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-info ms-2">
+                        <i class="fas fa-eye"></i> View Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5><i class="fas fa-exclamation-triangle"></i> Important Notes</h5>
+            </div>
+            <div class="card-body">
+                <h6>What happens when you delete:</h6>
+                <ul class="small">
+                    <li>Template is marked as inactive (soft delete)</li>
+                    <li>Template will not appear in active template lists</li>
+                    <li>Existing student submissions referencing this template are preserved</li>
+                    <li>Template data remains in the database for data integrity</li>
+                    <li>Template can potentially be reactivated later if needed</li>
+                </ul>
+                
+                <div class="alert alert-info small mt-3">
+                    <strong>Tip:</strong> If you want to keep the template but prevent new use, consider editing it and marking it as "Inactive" instead of deleting.
+                </div>
+                
+                @if (!string.IsNullOrEmpty(Model.RubricJson))
+                {
+                    <div class="alert alert-warning small mt-3">
+                        <strong>Rubric Alert:</strong> This template has a rubric defined. Make sure you have a backup if needed.
+                    </div>
+                }
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5><i class="fas fa-tools"></i> Alternatives</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-edit"></i> Edit Instead
+                    </a>
+                    <form asp-action="Duplicate" asp-route-id="@Model.Id" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-secondary btn-sm w-100" onclick="return confirm('Create a copy of this template before deleting?')">
+                            <i class="fas fa-copy"></i> Duplicate First
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

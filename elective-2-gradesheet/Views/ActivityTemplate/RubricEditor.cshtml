@@ -1,0 +1,374 @@
+@model elective_2_gradesheet.Models.RubricEditorViewModel
+@{
+    ViewData["Title"] = "Rubric Editor";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-list-check"></i> Rubric Editor</h2>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.ActivityTemplateId" class="btn btn-outline-primary">
+            <i class="fas fa-edit"></i> Edit Template
+        </a>
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <strong>Activity Template:</strong> @Model.ActivityTemplateName
+</div>
+
+<form asp-action="SaveRubric" method="post">
+    <input type="hidden" asp-for="ActivityTemplateId" />
+    <input type="hidden" asp-for="ActivityTemplateName" />
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-code"></i> JSON Editor</h5>
+                    <div>
+                        <button type="button" id="loadSampleRubric" class="btn btn-sm btn-outline-info me-2">
+                            <i class="fas fa-magic"></i> Load Sample
+                        </button>
+                        <button type="button" id="formatJson" class="btn btn-sm btn-outline-secondary me-2">
+                            <i class="fas fa-indent"></i> Format
+                        </button>
+                        <button type="button" id="validateRubric" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-check-circle"></i> Validate
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                    <textarea asp-for="RubricJson" class="form-control font-monospace" rows="20" id="rubricEditor"></textarea>
+                    <span asp-validation-for="RubricJson" class="text-danger"></span>
+                    <div id="rubricValidationFeedback" class="mt-2"></div>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <button type="submit" class="btn btn-primary me-2">
+                    <i class="fas fa-save"></i> Save Rubric
+                </button>
+                <button type="button" id="previewRubric" class="btn btn-outline-info me-2">
+                    <i class="fas fa-eye"></i> Preview
+                </button>
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Rubric Preview -->
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-eye"></i> Rubric Preview</h5>
+                </div>
+                <div class="card-body">
+                    <div id="rubricPreview">
+                        <p class="text-muted">Click "Preview" to see rubric structure</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Guidelines -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Guidelines</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Required Structure:</h6>
+                    <ul class="small">
+                        <li>Must be a JSON array</li>
+                        <li>Total points must equal 100</li>
+                        <li>Each item must have: name, points, keywords, files</li>
+                    </ul>
+                    
+                    <h6>Example Item:</h6>
+                    <pre class="small bg-light p-2 rounded"><code>{
+  "name": "Class Definition",
+  "points": 20,
+  "keywords": ["public class", "class"],
+  "files": ["*.cs", "*.java"]
+}</code></pre>
+                    
+                    <h6>File Patterns:</h6>
+                    <div class="small">
+                        <span class="badge bg-secondary me-1">*.cs</span>
+                        <span class="badge bg-secondary me-1">*.java</span>
+                        <span class="badge bg-secondary me-1">*.py</span>
+                        <span class="badge bg-secondary me-1">*Test*.cs</span>
+                        <span class="badge bg-secondary me-1">**/src/**</span>
+                    </div>
+                    
+                    <div class="alert alert-success small mt-3">
+                        <strong>Tip:</strong> Use the validation button to check your rubric before saving.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-tools"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="button" id="addRubricItem" class="btn btn-outline-primary btn-sm">
+                            <i class="fas fa-plus"></i> Add Item
+                        </button>
+                        <button type="button" id="clearRubric" class="btn btn-outline-warning btn-sm">
+                            <i class="fas fa-trash"></i> Clear All
+                        </button>
+                        <button type="button" id="exportRubric" class="btn btn-outline-info btn-sm">
+                            <i class="fas fa-download"></i> Export JSON
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const rubricEditor = document.getElementById('rubricEditor');
+            const validateButton = document.getElementById('validateRubric');
+            const formatButton = document.getElementById('formatJson');
+            const loadSampleButton = document.getElementById('loadSampleRubric');
+            const previewButton = document.getElementById('previewRubric');
+            const addItemButton = document.getElementById('addRubricItem');
+            const clearButton = document.getElementById('clearRubric');
+            const exportButton = document.getElementById('exportRubric');
+            const feedbackDiv = document.getElementById('rubricValidationFeedback');
+            const previewDiv = document.getElementById('rubricPreview');
+
+            // Load sample rubric
+            loadSampleButton.addEventListener('click', async function() {
+                if (rubricEditor.value.trim() && !confirm('This will replace the current rubric. Continue?')) {
+                    return;
+                }
+                
+                const sampleRubric = [
+                    {
+                        "name": "Class Definition",
+                        "points": 20,
+                        "keywords": ["public class", "class"],
+                        "files": ["*.cs", "*.java", "*.py"]
+                    },
+                    {
+                        "name": "Method Implementation",
+                        "points": 25,
+                        "keywords": ["public", "method", "function", "def"],
+                        "files": ["*.cs", "*.java", "*.py", "*.js"]
+                    },
+                    {
+                        "name": "Error Handling",
+                        "points": 20,
+                        "keywords": ["try", "catch", "exception", "error"],
+                        "files": ["*.cs", "*.java", "*.py", "*.js"]
+                    },
+                    {
+                        "name": "Documentation",
+                        "points": 15,
+                        "keywords": ["///", "/**", "#", "comment"],
+                        "files": ["*.cs", "*.java", "*.py", "*.js", "*.md"]
+                    },
+                    {
+                        "name": "Testing",
+                        "points": 20,
+                        "keywords": ["test", "assert", "expect", "should"],
+                        "files": ["*Test*.cs", "*test*.java", "test_*.py", "*.test.js"]
+                    }
+                ];
+                rubricEditor.value = JSON.stringify(sampleRubric, null, 4);
+                showFeedback('Sample rubric loaded!', 'success');
+                updatePreview();
+            });
+
+            // Format JSON
+            formatButton.addEventListener('click', function() {
+                try {
+                    const json = JSON.parse(rubricEditor.value);
+                    rubricEditor.value = JSON.stringify(json, null, 4);
+                    showFeedback('JSON formatted successfully!', 'success');
+                } catch (error) {
+                    showFeedback('Invalid JSON format. Please correct and try again.', 'danger');
+                }
+            });
+
+            // Add new rubric item
+            addItemButton.addEventListener('click', function() {
+                try {
+                    let rubric = [];
+                    if (rubricEditor.value.trim()) {
+                        rubric = JSON.parse(rubricEditor.value);
+                    }
+                    
+                    const newItem = {
+                        "name": "New Criterion",
+                        "points": 10,
+                        "keywords": ["keyword"],
+                        "files": ["*.cs"]
+                    };
+                    
+                    rubric.push(newItem);
+                    rubricEditor.value = JSON.stringify(rubric, null, 4);
+                    showFeedback('New rubric item added!', 'info');
+                } catch (error) {
+                    showFeedback('Error adding item. Please ensure valid JSON format.', 'danger');
+                }
+            });
+
+            // Clear rubric
+            clearButton.addEventListener('click', function() {
+                if (confirm('This will clear the entire rubric. Continue?')) {
+                    rubricEditor.value = '[]';
+                    updatePreview();
+                    showFeedback('Rubric cleared!', 'warning');
+                }
+            });
+
+            // Export rubric
+            exportButton.addEventListener('click', function() {
+                try {
+                    const json = JSON.parse(rubricEditor.value);
+                    const dataStr = JSON.stringify(json, null, 4);
+                    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                    const url = URL.createObjectURL(dataBlob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'rubric.json';
+                    link.click();
+                    URL.revokeObjectURL(url);
+                    showFeedback('Rubric exported!', 'success');
+                } catch (error) {
+                    showFeedback('Invalid JSON format. Cannot export.', 'danger');
+                }
+            });
+
+            // Validate rubric
+            validateButton.addEventListener('click', function() {
+                validateRubric();
+            });
+
+            // Preview rubric
+            previewButton.addEventListener('click', function() {
+                updatePreview();
+            });
+
+            function validateRubric() {
+                const json = rubricEditor.value.trim();
+                if (!json) {
+                    showFeedback('Please enter rubric JSON to validate.', 'warning');
+                    return;
+                }
+
+                try {
+                    const rubric = JSON.parse(json);
+                    let totalPoints = 0;
+                    let isValid = true;
+                    let errors = [];
+
+                    if (!Array.isArray(rubric)) {
+                        errors.push('Rubric must be an array');
+                        isValid = false;
+                    } else {
+                        for (let i = 0; i < rubric.length; i++) {
+                            const item = rubric[i];
+                            if (!item.name || typeof item.points !== 'number' || !item.keywords || !item.files) {
+                                errors.push(`Item ${i + 1}: Missing required properties (name, points, keywords, files)`);
+                                isValid = false;
+                            } else {
+                                totalPoints += item.points;
+                                
+                                if (!Array.isArray(item.keywords) || item.keywords.length === 0) {
+                                    errors.push(`Item ${i + 1}: Keywords must be a non-empty array`);
+                                    isValid = false;
+                                }
+                                
+                                if (!Array.isArray(item.files) || item.files.length === 0) {
+                                    errors.push(`Item ${i + 1}: Files must be a non-empty array`);
+                                    isValid = false;
+                                }
+                            }
+                        }
+                        
+                        if (totalPoints !== 100) {
+                            errors.push(`Total points must equal 100 (current: ${totalPoints})`);
+                            isValid = false;
+                        }
+                    }
+
+                    if (isValid) {
+                        showFeedback(`✅ Valid rubric! Total points: ${totalPoints}`, 'success');
+                    } else {
+                        showFeedback('❌ Validation errors:<br>• ' + errors.join('<br>• '), 'danger');
+                    }
+                } catch (error) {
+                    showFeedback('❌ Invalid JSON format: ' + error.message, 'danger');
+                }
+            }
+
+            function updatePreview() {
+                try {
+                    const json = rubricEditor.value.trim();
+                    if (!json) {
+                        previewDiv.innerHTML = '<p class="text-muted">No rubric to preview</p>';
+                        return;
+                    }
+
+                    const rubric = JSON.parse(json);
+                    let totalPoints = 0;
+                    let html = '<div class="rubric-preview">';
+                    
+                    rubric.forEach((item, index) => {
+                        totalPoints += item.points || 0;
+                        html += `
+                            <div class="border rounded p-2 mb-2 bg-light">
+                                <div class="d-flex justify-content-between">
+                                    <strong>${item.name || 'Unnamed'}</strong>
+                                    <span class="badge bg-primary">${item.points || 0} pts</span>
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    <strong>Keywords:</strong> ${(item.keywords || []).join(', ')}<br>
+                                    <strong>Files:</strong> ${(item.files || []).join(', ')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `<div class="mt-2"><strong>Total Points: ${totalPoints}</strong></div>`;
+                    html += '</div>';
+                    
+                    previewDiv.innerHTML = html;
+                    
+                    if (totalPoints !== 100) {
+                        previewDiv.innerHTML += `<div class="alert alert-warning small mt-2">⚠️ Total should be 100 points</div>`;
+                    }
+                    
+                } catch (error) {
+                    previewDiv.innerHTML = '<div class="alert alert-danger small">Invalid JSON format</div>';
+                }
+            }
+
+            function showFeedback(message, type) {
+                feedbackDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+                setTimeout(() => {
+                    feedbackDiv.innerHTML = '';
+                }, 5000);
+            }
+
+            // Initialize preview on load
+            if (rubricEditor.value.trim()) {
+                updatePreview();
+            }
+        });
+    </script>
+}

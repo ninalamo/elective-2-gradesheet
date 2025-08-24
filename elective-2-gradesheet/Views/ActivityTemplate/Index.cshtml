@@ -1,0 +1,258 @@
+@using elective_2_gradesheet.Data.Entities
+@model elective_2_gradesheet.Models.ActivityTemplateListViewModel
+@{
+    ViewData["Title"] = "Activity Templates";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-tasks"></i> Activity Templates</h2>
+    <a asp-action="Create" class="btn btn-primary">
+        <i class="fas fa-plus"></i> New Template
+    </a>
+</div>
+
+<!-- Search and Filter Section -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="searchString" class="form-label">Search</label>
+                <input type="text" class="form-control" id="searchString" name="searchString" 
+                       value="@Model.CurrentSearch" placeholder="Name, description, or tag">
+            </div>
+            <div class="col-md-3">
+                <label for="sectionId" class="form-label">Section</label>
+                <select class="form-select" id="sectionId" name="sectionId">
+                    <option value="">All Sections</option>
+                    @foreach (var sec in Model.Sections)
+                    {
+                        <option value="@sec.Value" selected="@(sec.Value == Model.CurrentSectionId?.ToString())">
+                            @sec.Text
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="period" class="form-label">Period</label>
+                <select class="form-select" id="period" name="period">
+                    <option value="">All Periods</option>
+                    @foreach (var period in Enum.GetValues<GradingPeriod>())
+                    {
+                        <option value="@period" selected="@(period == Model.CurrentPeriod)">
+                            @period.ToString()
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="sortOrder" class="form-label">Sort By</label>
+                <select class="form-select" id="sortOrder" name="sortOrder">
+                    <option value="" selected="@(string.IsNullOrEmpty(Model.CurrentSort))">Name (A-Z)</option>
+                    <option value="name_desc" selected="@(Model.CurrentSort == "name_desc")">Name (Z-A)</option>
+                    <option value="Section" selected="@(Model.CurrentSort == "Section")">Section (A-Z)</option>
+                    <option value="section_desc" selected="@(Model.CurrentSort == "section_desc")">Section (Z-A)</option>
+                    <option value="Period" selected="@(Model.CurrentSort == "Period")">Period (A-Z)</option>
+                    <option value="period_desc" selected="@(Model.CurrentSort == "period_desc")">Period (Z-A)</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-search"></i> Search
+                </button>
+                <a asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Clear
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results Section -->
+@if (!Model.ActivityTemplates.Any())
+{
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i>
+        No activity templates found. <a asp-action="Create" class="alert-link">Create the first one</a>.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>
+                                <a asp-action="Index" 
+                                   asp-route-sortOrder="@(ViewData["NameSortParm"])" 
+                                   asp-route-searchString="@Model.CurrentSearch" 
+                                   asp-route-sectionId="@Model.CurrentSectionId" 
+                                   asp-route-period="@Model.CurrentPeriod"
+                                   class="text-white text-decoration-none">
+                                    Name
+                                    @if (string.IsNullOrEmpty(Model.CurrentSort))
+                                    {
+                                        <i class="fas fa-sort-up"></i>
+                                    }
+                                    else if (Model.CurrentSort == "name_desc")
+                                    {
+                                        <i class="fas fa-sort-down"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-sort"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="Index" 
+                                   asp-route-sortOrder="@(ViewData["SectionSortParm"])" 
+                                   asp-route-searchString="@Model.CurrentSearch" 
+                                   asp-route-sectionId="@Model.CurrentSectionId" 
+                                   asp-route-period="@Model.CurrentPeriod"
+                                   class="text-white text-decoration-none">
+                                    Section
+                                    @if (Model.CurrentSort == "Section")
+                                    {
+                                        <i class="fas fa-sort-up"></i>
+                                    }
+                                    else if (Model.CurrentSort == "section_desc")
+                                    {
+                                        <i class="fas fa-sort-down"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-sort"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>
+                                <a asp-action="Index" 
+                                   asp-route-sortOrder="@(ViewData["PeriodSortParm"])" 
+                                   asp-route-searchString="@Model.CurrentSearch" 
+                                   asp-route-sectionId="@Model.CurrentSectionId" 
+                                   asp-route-period="@Model.CurrentPeriod"
+                                   class="text-white text-decoration-none">
+                                    Period
+                                    @if (Model.CurrentSort == "Period")
+                                    {
+                                        <i class="fas fa-sort-up"></i>
+                                    }
+                                    else if (Model.CurrentSort == "period_desc")
+                                    {
+                                        <i class="fas fa-sort-down"></i>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-sort"></i>
+                                    }
+                                </a>
+                            </th>
+                            <th>Tag</th>
+                            <th>Max Points</th>
+                            <th>Rubric</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var template in Model.ActivityTemplates)
+                        {
+                            <tr class="@(template.IsActive ? "" : "text-muted")">
+                                <td>
+                                    <strong>@template.Name</strong>
+                                    @if (!string.IsNullOrEmpty(template.Description))
+                                    {
+                                        <br><small class="text-muted">@template.Description</small>
+                                    }
+                                </td>
+                                <td>@template.Section?.Name</td>
+                                <td>
+                                    <span class="badge bg-secondary">@template.Period.ToString()</span>
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(template.Tag))
+                                    {
+                                        <span class="badge bg-info text-dark">@template.Tag</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">-</span>
+                                    }
+                                </td>
+                                <td>@template.MaxPoints.ToString("F1")</td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(template.RubricJson))
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check"></i> Has Rubric
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-exclamation-triangle"></i> No Rubric
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (template.IsActive)
+                                    {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Details" asp-route-id="@template.Id" class="btn btn-sm btn-outline-info" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a asp-action="Edit" asp-route-id="@template.Id" class="btn btn-sm btn-outline-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        @if (!string.IsNullOrEmpty(template.RubricJson))
+                                        {
+                                            <a asp-action="RubricEditor" asp-route-id="@template.Id" class="btn btn-sm btn-outline-success" title="Edit Rubric">
+                                                <i class="fas fa-list-check"></i>
+                                            </a>
+                                        }
+                                        <form asp-action="Duplicate" asp-route-id="@template.Id" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Duplicate" onclick="return confirm('Duplicate this activity template?')">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </form>
+                                        <a asp-action="Delete" asp-route-id="@template.Id" class="btn btn-sm btn-outline-danger" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // Auto-submit form when filters change
+        document.getElementById('sectionId').addEventListener('change', function() {
+            this.form.submit();
+        });
+        
+        document.getElementById('period').addEventListener('change', function() {
+            this.form.submit();
+        });
+        
+        document.getElementById('sortOrder').addEventListener('change', function() {
+            this.form.submit();
+        });
+    </script>
+}
