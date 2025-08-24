@@ -365,29 +365,33 @@ body {
     color: var(--surface);
 }
 
-/* Academic Status Indicators */
+/* Academic Status Indicators - High Contrast */
 .status-submitted {
-    background-color: rgba(5, 150, 105, 0.1);
-    color: var(--success);
-    border: 1px solid rgba(5, 150, 105, 0.3);
+    background-color: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+    font-weight: 600;
 }
 
 .status-missing {
-    background-color: rgba(220, 38, 38, 0.1);
-    color: var(--error);
-    border: 1px solid rgba(220, 38, 38, 0.3);
+    background-color: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    font-weight: 600;
 }
 
 .status-pending {
-    background-color: rgba(217, 119, 6, 0.1);
-    color: var(--warning);
-    border: 1px solid rgba(217, 119, 6, 0.3);
+    background-color: #fffbeb;
+    color: #92400e;
+    border: 1px solid #fed7aa;
+    font-weight: 600;
 }
 
 .status-graded {
-    background-color: rgba(2, 132, 199, 0.1);
-    color: var(--info);
-    border: 1px solid rgba(2, 132, 199, 0.3);
+    background-color: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+    font-weight: 600;
 }
 
 /* Professional Typography */
@@ -421,43 +425,44 @@ h6 { font-size: 1rem; }
     border-radius: 0.375rem;
 }
 
-/* Academic Alert Styles */
+/* Academic Alert Styles - High Contrast */
 .alert {
     border-radius: 0.5rem;
     border: 1px solid transparent;
     padding: 1rem 1.25rem;
     margin-bottom: 1rem;
     font-size: 0.875rem;
+    font-weight: 500;
 }
 
 .alert-primary {
-    background-color: rgba(59, 130, 246, 0.1);
-    border-color: rgba(59, 130, 246, 0.2);
-    color: var(--accent-blue);
+    background-color: #eff6ff;
+    border-color: #93c5fd;
+    color: #1e40af;
 }
 
 .alert-success {
-    background-color: rgba(5, 150, 105, 0.1);
-    border-color: rgba(5, 150, 105, 0.2);
-    color: var(--success);
+    background-color: #ecfdf5;
+    border-color: #a7f3d0;
+    color: #065f46;
 }
 
 .alert-warning {
-    background-color: rgba(217, 119, 6, 0.1);
-    border-color: rgba(217, 119, 6, 0.2);
-    color: var(--warning);
+    background-color: #fffbeb;
+    border-color: #fed7aa;
+    color: #92400e;
 }
 
 .alert-danger {
-    background-color: rgba(220, 38, 38, 0.1);
-    border-color: rgba(220, 38, 38, 0.2);
-    color: var(--error);
+    background-color: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
 }
 
 .alert-info {
-    background-color: rgba(2, 132, 199, 0.1);
-    border-color: rgba(2, 132, 199, 0.2);
-    color: var(--info);
+    background-color: #eff6ff;
+    border-color: #93c5fd;
+    color: #1e40af;
 }
 
 /* Professional Modal Styles */
@@ -515,45 +520,65 @@ h6 { font-size: 1rem; }
     font-size: 0.85rem;
 }
 
-/* Professional Toast Colors */
+/* Professional Toast Colors - High Contrast */
 .toast.text-bg-success .toast-header {
-    background-color: var(--success);
-    color: var(--surface);
+    background-color: #047857;
+    color: #ffffff;
 }
 
 .toast.text-bg-info .toast-header {
-    background-color: var(--info);
-    color: var(--surface);
+    background-color: #0369a1;
+    color: #ffffff;
 }
 
 .toast.text-bg-warning .toast-header {
-    background-color: var(--warning);
-    color: var(--surface);
+    background-color: #c2410c;
+    color: #ffffff;
 }
 
 .toast.text-bg-danger .toast-header {
-    background-color: var(--error);
-    color: var(--surface);
+    background-color: #b91c1c;
+    color: #ffffff;
 }
 
 .toast.text-bg-success {
-    background-color: rgba(5, 150, 105, 0.1);
-    color: var(--success);
+    background-color: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+
+.toast.text-bg-success .toast-body {
+    color: #065f46;
 }
 
 .toast.text-bg-info {
-    background-color: rgba(2, 132, 199, 0.1);
-    color: var(--info);
+    background-color: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+
+.toast.text-bg-info .toast-body {
+    color: #1e40af;
 }
 
 .toast.text-bg-warning {
-    background-color: rgba(217, 119, 6, 0.1);
-    color: var(--warning);
+    background-color: #fffbeb;
+    border: 1px solid #fed7aa;
+    color: #92400e;
+}
+
+.toast.text-bg-warning .toast-body {
+    color: #92400e;
 }
 
 .toast.text-bg-danger {
-    background-color: rgba(220, 38, 38, 0.1);
-    color: var(--error);
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.toast.text-bg-danger .toast-body {
+    color: #991b1b;
 }
 
 /* Spinner inside toast - ensure it's visible */
