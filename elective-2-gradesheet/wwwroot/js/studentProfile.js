@@ -1,4 +1,49 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
+    // Next Student functionality
+    const nextStudentBtn = document.getElementById('nextStudentBtn');
+    const includeCheckedToggle = document.getElementById('includeChecked');
+    const currentStudentId = document.getElementById('currentStudentId').value;
+    const currentActivityName = document.getElementById('currentActivityName');
+
+    // Add click handler to edit/add activity links to capture activity name
+    document.querySelectorAll('.edit-activity, .add-activity').forEach(link => {
+        link.addEventListener('click', function() {
+            currentActivityName.value = this.getAttribute('data-activity-name');
+        });
+    });
+
+    // Handle Next Student button click
+    if (nextStudentBtn) {
+        nextStudentBtn.addEventListener('click', async function() {
+            try {
+                const activityName = currentActivityName.value;
+                const includeChecked = includeCheckedToggle.checked;
+
+                const response = await fetch(`/Home/GetNextStudent?currentStudentId=${currentStudentId}&activityName=${encodeURIComponent(activityName)}&includeChecked=${includeChecked}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Redirect to the next student's profile
+                    window.location.href = `/Home/StudentProfile/${data.studentId}`;
+                } else {
+                    showToast(data.message || 'No next student found.', 'warning');
+                }
+            } catch (error) {
+                console.error('Error finding next student:', error);
+                showToast('Error finding next student. Please try again.', 'danger');
+            }
+        });
+    }
+
+    // Store activity name when opening the edit modal
+    document.querySelectorAll('[data-bs-toggle="modal"]').forEach(element => {
+        element.addEventListener('click', function() {
+            const activityName = this.getAttribute('data-activity-name');
+            if (activityName) {
+                currentActivityName.value = activityName;
+            }
+        });
+    });
     var editModal = document.getElementById('editActivityModal');
     var tagSelect = editModal.querySelector('#editTag');
     var otherTagContainer = editModal.querySelector('#otherTagContainer');
@@ -265,11 +310,10 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const ugly = rubricJson.value;
             const obj = JSON.parse(ugly);
-            const pretty = JSON.stringify(obj, undefined, 4);
+            const pretty = JSON.stringify(obj, null, 4);
             rubricJson.value = pretty;
-            showToast('JSON formatted successfully!', 'success');
         } catch (e) {
-            showToast('Invalid JSON. Please correct and try again.', 'danger');
+            showToast('Cannot format: Invalid JSON content', 'warning');
         }
     });
 
@@ -410,6 +454,48 @@ document.addEventListener('DOMContentLoaded', function () {
         container.appendChild(ul);
     }
 
+    // Load rubric for the activity
+    async function loadActivityRubric(activityName) {
+        const rubricTextarea = document.getElementById('rubricJson');
+        const formatButton = document.getElementById('prettifyJsonButton');
+        
+        try {
+            const response = await fetch('/Home/GetActivityTemplateRubric', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ activityName: activityName })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Try to format the JSON nicely
+                try {
+                    const parsed = JSON.parse(data.rubricJson);
+                    rubricTextarea.value = JSON.stringify(parsed, null, 4);
+                } catch {
+                    // If parsing fails, show as-is
+                    rubricTextarea.value = data.rubricJson;
+                }
+                
+                if (!rubricTextarea.value) {
+                    rubricTextarea.value = 'No rubric defined for this activity.';
+                }
+            } else {
+                rubricTextarea.value = data.message || 'No rubric found.';
+            }
+            
+            // Format button only enabled if we have valid JSON
+            formatButton.disabled = !data.success;
+        } catch (error) {
+            console.error('Error loading rubric:', error);
+            rubricTextarea.value = 'Error loading rubric.';
+            formatButton.disabled = true;
+        }
+    }
+
     editModal.addEventListener('show.bs.modal', function (event) {
         var button = event.relatedTarget;
         var activityId = button.getAttribute('data-activity-id');
@@ -421,6 +507,9 @@ document.addEventListener('DOMContentLoaded', function () {
         var tag = button.getAttribute('data-tag');
         var githubLink = button.getAttribute('data-github-link');
         var status = button.getAttribute('data-status');
+
+        // Load the rubric when modal opens
+        loadActivityRubric(activityName);
 
         var activityIdInput = editModal.querySelector('#editActivityId');
         activityNameP = editModal.querySelector('#editActivityName'); // Set global reference

@@ -11,10 +11,25 @@
     <div class="container mt-5">
         <div class="card mb-4">
             <div class="card-header">
-                <h3>@Model.StudentFullName</h3>
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3>@Model.StudentFullName</h3>
+                    <div class="btn-group align-items-center">
+                        <div class="form-check me-3">
+                            <input class="form-check-input" type="checkbox" id="includeChecked">
+                            <label class="form-check-label" for="includeChecked">
+                                Include checked
+                            </label>
+                        </div>
+                        <button type="button" id="nextStudentBtn" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-right"></i> Next Student
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 <p><strong>Section:</strong> @Model.SectionName</p>
+                <input type="hidden" id="currentActivityName" value="" />
+                <input type="hidden" id="currentStudentId" value="@Model.StudentId" />
             </div>
         </div>
 
@@ -259,74 +274,11 @@
                                         <div class="d-flex justify-content-between align-items-center mb-2">
                                             <label for="rubricJson" class="form-label">Rubric (JSON)</label>
                                             <div>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="prettifyJsonButton">Prettify</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="prettifyJsonButton">Format</button>
                                                 <button type="button" class="btn btn-sm btn-outline-secondary" id="copyRubricButton">Copy</button>
                                             </div>
                                         </div>
-                                        <textarea id="rubricJson" class="form-control" rows="15">[
-    {
-        "name": "Student class with constructors",
-        "points": 10,
-        "keywords": ["Student", "constructor", "default", "firstName", "lastName"],
-        "files": ["Models/Student.cs"]
-    },
-    {
-        "name": "Student class properties and methods",
-        "points": 15,
-        "keywords": [
-            "FirstName",
-            "LastName",
-            "SetFirstName",
-            "SetLastName",
-            "Title",
-            "Course",
-            "Section",
-            "Birthday",
-            "SetGender",
-            "Gender"
-        ],
-        "files": ["Models/Student.cs"]
-    },
-    {
-        "name": "Gender enum defined",
-        "points": 5,
-        "keywords": ["enum", "Gender", "Unknown", "Male", "Female"],
-        "files": ["Models/Student.cs"]
-    },
-    {
-        "name": "Computed properties FullName and Age",
-        "points": 10,
-        "keywords": ["FullName", "Age", "Birthday", "Title", "FirstName", "LastName"],
-        "files": ["Models/Student.cs"]
-    },
-    {
-        "name": "Index.cshtml creates List<Student> with 10 entries",
-        "points": 20,
-        "keywords": ["Index.cshtml", "List<Student>", "new Student", "Add", "10"],
-        "files": ["Views/Home/Index.cshtml"]
-    },
-    {
-        "name": "Index.cshtml displays Student table",
-        "points": 30,
-        "keywords": [
-            "table",
-            "FullName",
-            "Gender",
-            "Course",
-            "Section",
-            "Birthday",
-            "Age",
-            "foreach"
-        ],
-        "files": ["Views/Home/Index.cshtml"]
-    },
-    {
-        "name": "No controller logic used",
-        "points": 10,
-        "keywords": ["Index.cshtml only", "no controller"],
-        "files": ["Views/Home/Index.cshtml"]
-    }
-]</textarea>
+                                        <textarea id="rubricJson" class="form-control" rows="15" readonly placeholder="Loading rubric..."></textarea>
                                     </div>
                                 </div>
                             </div>

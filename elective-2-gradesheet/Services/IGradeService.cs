@@ -16,6 +16,10 @@ namespace elective_2_gradesheet.Services
         // This new method signature was added
         Task UpdateActivityAsync(int studentId, double points, double maxPoints, GradingPeriod period, string tag, string otherTag, string githubLink, string status, int? activityId, string? activityName, int? newId = 0);
         Task<int> BulkAddMissingActivitiesAsync(int studentId, GradingPeriod gradingPeriod);
+
+        Task<(bool success, string message, int? studentId)> GetNextStudentAsync(int currentStudentId, int? sectionId = null, string activityName = null, bool includeChecked = false);
+
+        Task<(bool success, string message, string rubricJson)> GetActivityTemplateRubricAsync(string activityName);
     }
 
     public class GradeService : IGradeService
@@ -28,6 +32,27 @@ namespace elective_2_gradesheet.Services
             _context = context;
         }
 
+        public async Task<(bool success, string message, string rubricJson)> GetActivityTemplateRubricAsync(string activityName)
+        {
+            try
+            {
+                var activityTemplate = await _context.ActivityTemplates
+                    .FirstOrDefaultAsync(at => at.Name == activityName && at.IsActive);
+
+                if (activityTemplate != null && !string.IsNullOrEmpty(activityTemplate.RubricJson))
+                {
+                    return (true, null, activityTemplate.RubricJson);
+                }
+                else
+                {
+                    return (false, "No rubric found for this activity.", null);
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error getting rubric: {ex.Message}", null);
+            }
+        }
 
         public async Task<int> BulkAddMissingActivitiesAsync(int studentId, GradingPeriod period)
         {
@@ -362,7 +387,6 @@ namespace elective_2_gradesheet.Services
             await _context.SaveChangesAsync();
         }
 
-
         public async Task ProcessAndSaveGradesAsync(CsvDisplayViewModel model)
         {
             var records = model.GradeRecords;
@@ -380,8 +404,8 @@ namespace elective_2_gradesheet.Services
 
                 // Find or create the activity template for this activity
                 var activityTemplate = await _context.ActivityTemplates
-                    .FirstOrDefaultAsync(at => at.Name == activityName && 
-                                             at.Period == gradingPeriod && 
+                    .FirstOrDefaultAsync(at => at.Name == activityName &&
+                                             at.Period == gradingPeriod &&
                                              at.SectionId == sectionId);
 
                 if (activityTemplate == null)
@@ -389,7 +413,7 @@ namespace elective_2_gradesheet.Services
                     // Create a new activity template
                     var maxPoints = activityGroup.FirstOrDefault()?.MaxPoints;
                     var parsedMaxPoints = double.TryParse(maxPoints, out var mp) ? mp : 100.0;
-                    
+
                     activityTemplate = new ActivityTemplate
                     {
                         Name = activityName,
@@ -429,7 +453,7 @@ namespace elective_2_gradesheet.Services
 
                     // Check if submission already exists
                     var existingSubmission = await _context.StudentSubmissions
-                        .FirstOrDefaultAsync(ss => ss.StudentId == student.Id && 
+                        .FirstOrDefaultAsync(ss => ss.StudentId == student.Id &&
                                                  ss.ActivityTemplateId == activityTemplate.Id);
 
                     if (existingSubmission != null)
@@ -444,7 +468,7 @@ namespace elective_2_gradesheet.Services
                         existingSubmission.Points = points;
                         existingSubmission.Status = record.Status;
                         existingSubmission.UpdatedDate = DateTime.UtcNow;
-                        
+
                         if (record.Status == "Turned in" && existingSubmission.SubmissionDate == null)
                         {
                             existingSubmission.SubmissionDate = DateTime.UtcNow;
@@ -472,15 +496,96 @@ namespace elective_2_gradesheet.Services
                         _context.StudentSubmissions.Add(submission);
                     }
                 }
+
+                // Save all changes in a single transaction.
+                await _context.SaveChangesAsync();
             }
 
-            // Save all changes in a single transaction.
-            await _context.SaveChangesAsync();
         }
-
         public async Task<List<Section>> GetActiveSectionsAsync()
         {
             return await _context.Sections.Where(s => s.IsActive).ToListAsync();
         }
+
+        public async Task<(bool success, string message, int? studentId)> GetNextStudentAsync(int currentStudentId, int? sectionId = null, string activityName = null, bool includeChecked = false)
+        {
+            try
+            {
+                // Get current student's section if not provided
+                if (!sectionId.HasValue)
+                {
+                    var currentStudent = await _context.Students
+                        .FirstOrDefaultAsync(s => s.Id == currentStudentId);
+                    if (currentStudent != null)
+                    {
+                        sectionId = currentStudent.SectionId;
+                    }
+                }
+
+                // Get all students in the section
+                var allStudents = await _context.Students
+                    .Where(s => s.SectionId == sectionId)
+                    .Select(s => s.Id)
+                    .ToListAsync();
+
+                var eligibleStudentIds = new HashSet<int>(allStudents);
+
+                // If activity name is provided, filter based on it
+                if (!string.IsNullOrEmpty(activityName))
+                {
+                    // Get all active templates for this activity in the section
+                    var templateIds = await _context.ActivityTemplates
+                        .Where(at => at.Name == activityName && at.SectionId == sectionId && at.IsActive)
+                        .Select(at => at.Id)
+                        .ToListAsync();
+
+                    if (templateIds.Any())
+                    {
+                        if (!includeChecked)
+                        {
+                            // Get IDs of students who have non-zero scores for this activity
+                            var studentsWithNonZeroScores = await _context.StudentSubmissions
+                                .Where(ss => templateIds.Contains(ss.ActivityTemplateId) && ss.Points > 0)
+                                .Select(ss => ss.StudentId)
+                                .ToListAsync();
+
+                            // Remove students with non-zero scores from eligible set
+                            eligibleStudentIds.ExceptWith(studentsWithNonZeroScores);
+                        }
+                    }
+                }
+
+                // Final query to get the next student
+                var query = _context.Students
+                    .Where(s => eligibleStudentIds.Contains(s.Id));
+
+                // Get the next student after the current one
+                var nextStudent = await query
+                    .Where(s => s.Id > currentStudentId)
+                    .OrderBy(s => s.Id)
+                    .FirstOrDefaultAsync();
+
+                // If no next student, get the first student (wrap around)
+                if (nextStudent == null)
+                {
+                    nextStudent = await query
+                        .OrderBy(s => s.Id)
+                        .FirstOrDefaultAsync();
+                }
+
+                if (nextStudent == null)
+                {
+                    return (false, "No students found matching criteria.", null);
+                }
+
+                return (true, null, nextStudent.Id);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error finding next student: {ex.Message}", null);
+            }
+        }
+
     }
+
 }

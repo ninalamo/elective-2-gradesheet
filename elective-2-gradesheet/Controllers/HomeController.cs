@@ -10,27 +10,25 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 
-namespace CsvImporter.Controllers
+namespace elective_2_gradesheet.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly IGradeService _gradeService;
+    private readonly IGradeService _gradeService;
         private readonly ICsvParsingService _csvParsingService;
-        private readonly ApplicationDbContext _context;
         private readonly IGitService _gitService;
 
-        public HomeController(IGradeService gradeService, ICsvParsingService csvParsingService, ApplicationDbContext dbContext, IGitService gitService)
+        public HomeController(IGradeService gradeService, ICsvParsingService csvParsingService, IGitService gitService)
         {
             _gradeService = gradeService;
             _csvParsingService = csvParsingService;
-            _context = dbContext;
             _gitService = gitService;
         }
 
-        public IActionResult Index(CsvDisplayViewModel model = null)
+        public async Task<IActionResult> Index(CsvDisplayViewModel model = null)
         {
             model ??= new CsvDisplayViewModel();
-            ViewBag.Sections = _context.Sections
+            ViewBag.Sections = (await _gradeService.GetActiveSectionsAsync())
                 .Select(s => new SelectListItem { Text = s.Name, Value = s.Id.ToString() })
                 .ToList();
             return View(model);
@@ -41,7 +39,7 @@ namespace CsvImporter.Controllers
         [HttpPost]
         public async Task<IActionResult> Upload(IFormFile file, CsvDisplayViewModel model)
         {
-            ViewBag.Sections = _context.Sections
+            ViewBag.Sections = (await _gradeService.GetActiveSectionsAsync())
               .Select(s => new SelectListItem { Text = s.Name, Value = s.Id.ToString() })
               .ToList();
 
@@ -95,6 +93,14 @@ namespace CsvImporter.Controllers
                 return NotFound();
             }
             return View(viewModel);
+        }
+
+        // GET: Home/GetNextStudent
+        [HttpGet]
+        public async Task<IActionResult> GetNextStudent(int currentStudentId, int? sectionId = null, string? activityName = null, bool includeChecked = false)
+        {
+            var result = await _gradeService.GetNextStudentAsync(currentStudentId, sectionId, activityName, includeChecked);
+            return Json(new { success = result.success, message = result.message, studentId = result.studentId });            
         }
 
         [HttpPost]
@@ -455,27 +461,12 @@ namespace CsvImporter.Controllers
         [HttpPost]
         public async Task<IActionResult> GetActivityTemplateRubric([FromBody] GetActivityTemplateRubricRequest request)
         {
-            try
-            {
-                var activityTemplate = await _context.ActivityTemplates
-                    .FirstOrDefaultAsync(at => at.Name == request.ActivityName && at.IsActive);
-
-                if (activityTemplate != null && !string.IsNullOrEmpty(activityTemplate.RubricJson))
-                {
-                    return Json(new { 
-                        success = true, 
-                        rubricJson = activityTemplate.RubricJson 
-                    });
-                }
-                else
-                {
-                    return Json(new { success = false, message = "No rubric found for this activity." });
-                }
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = $"Error getting rubric: {ex.Message}" });
-            }
+            var result = await _gradeService.GetActivityTemplateRubricAsync(request.ActivityName);
+            return Json(new { 
+                success = result.success, 
+                message = result.message,
+                rubricJson = result.rubricJson 
+            });
         }
 
         private List<string> FindProjectDirectories(string rootDirectory)
