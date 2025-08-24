@@ -174,23 +174,48 @@ namespace elective_2_gradesheet.Controllers
                         foreach (var file in relevantFiles)
                         {
                             var normalizedFileContent = Regex.Replace(file.Content, @"\s+", "").ToLower();
-                            var allKeywordsFound = item.Keywords.All(keyword => {
-                                var normalizedKeyword = Regex.Replace(keyword, @"\s+", "").ToLower();
-                                return normalizedFileContent.Contains(normalizedKeyword);
-                            });
-
-                            if (allKeywordsFound)
+                            // Count how many keywords are found
+                            var foundKeywords = new List<string>();
+                            var missingKeywords = new List<string>();
+                            
+                            foreach (var keyword in item.Keywords)
                             {
-                                totalScore += item.Points;
-                                proof = GetLineWithKeyword(file.Content, item.Keywords.First());
+                                var normalizedKeyword = Regex.Replace(keyword, @"\s+", "").ToLower();
+                                if (normalizedFileContent.Contains(normalizedKeyword))
+                                {
+                                    foundKeywords.Add(keyword);
+                                }
+                                else
+                                {
+                                    missingKeywords.Add(keyword);
+                                }
+                            }
+
+                            // Calculate score based on found keywords
+                            if (foundKeywords.Count > 0)
+                            {
+                                var keywordScore = item.Points - missingKeywords.Count;
+                                // Don't allow negative scores, minimum is 0
+                                keywordScore = Math.Max(0, keywordScore);
+                                
+                                totalScore += keywordScore;
+                                proof = GetLineWithKeyword(file.Content, foundKeywords.First());
                                 fileName = file.Name;
                                 criterionMet = true;
+                                
+                                // Store the actual awarded score for results
+                                scoringResults.Add(new ScoringResult { FileName = fileName, Criterion = item.Name, Points = keywordScore, Proof = proof, Met = criterionMet });
                                 break;
                             }
                         }
                         if (criterionMet) break;
                     }
-                    scoringResults.Add(new ScoringResult { FileName = fileName, Criterion = item.Name, Points = criterionMet ? item.Points : 0, Proof = proof, Met = criterionMet });
+                    
+                    // Only add to results if we haven't already added it inside the loop
+                    if (!criterionMet)
+                    {
+                        scoringResults.Add(new ScoringResult { FileName = fileName, Criterion = item.Name, Points = 0, Proof = proof, Met = criterionMet });
+                    }
                 }
 
                 return Ok(new { totalScore, results = scoringResults });
@@ -414,15 +439,21 @@ namespace elective_2_gradesheet.Controllers
                                 scanLog.Add($"[{DateTime.Now:HH:mm:ss}]        ✗ Missing keywords: [{string.Join(", ", missingKeywords)}]");
                             }
                             
-                            var allKeywordsFound = missingKeywords.Count == 0;
-
-                            if (allKeywordsFound)
+                            // Calculate score based on found keywords
+                            if (foundKeywords.Count > 0)
                             {
-                                totalScore += item.Points;
-                                proof = GetLineWithKeyword(file.Content, item.Keywords.First());
+                                var keywordScore = item.Points - missingKeywords.Count;
+                                // Don't allow negative scores, minimum is 0
+                                keywordScore = Math.Max(0, keywordScore);
+                                
+                                totalScore += keywordScore;
+                                proof = GetLineWithKeyword(file.Content, foundKeywords.First());
                                 fileName = file.Name;
                                 criterionMet = true;
-                                scanLog.Add($"[{DateTime.Now:HH:mm:ss}]        ✓ CRITERION MET! Awarded {item.Points} points");
+                                scanLog.Add($"[{DateTime.Now:HH:mm:ss}]        ✓ CRITERION SCORED! Found {foundKeywords.Count}/{item.Keywords.Count} keywords. Awarded {keywordScore}/{item.Points} points");
+                                
+                                // Store the actual awarded score for results
+                                scoringResults.Add(new ScoringResult { FileName = fileName, Criterion = item.Name, Points = keywordScore, Proof = proof, Met = criterionMet });
                                 break;
                             }
                         }
@@ -432,9 +463,8 @@ namespace elective_2_gradesheet.Controllers
                     if (!criterionMet)
                     {
                         scanLog.Add($"[{DateTime.Now:HH:mm:ss}]    ✗ Criterion not met (0 points)");
+                        scoringResults.Add(new ScoringResult { FileName = fileName, Criterion = item.Name, Points = 0, Proof = proof, Met = criterionMet });
                     }
-                    
-                    scoringResults.Add(new ScoringResult { FileName = fileName, Criterion = item.Name, Points = criterionMet ? item.Points : 0, Proof = proof, Met = criterionMet });
                 }
                 
                 scanLog.Add($"[{DateTime.Now:HH:mm:ss}] Scoring complete! Final score: {totalScore}/{rubric.Sum(r => r.Points)}");
