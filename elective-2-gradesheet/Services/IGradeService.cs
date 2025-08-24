@@ -298,14 +298,14 @@ namespace elective_2_gradesheet.Services
                 // Case: Add a new submission record
                 // This case is complex because we need to either find or create an ActivityTemplate
                 // and then create a StudentSubmission
-                
+
                 var student = await _context.Students.FindAsync(studentId);
                 if (student == null) return;
 
                 // Try to find an existing activity template with the same name and period
                 var activityTemplate = await _context.ActivityTemplates
-                    .FirstOrDefaultAsync(at => at.Name == activityName && 
-                                             at.Period == period && 
+                    .FirstOrDefaultAsync(at => at.Name == activityName &&
+                                             at.Period == period &&
                                              at.SectionId == student.SectionId);
 
                 if (activityTemplate == null)
@@ -354,26 +354,26 @@ namespace elective_2_gradesheet.Services
                 var submission = await _context.StudentSubmissions
                     .Include(ss => ss.ActivityTemplate)
                     .FirstOrDefaultAsync(ss => ss.Id == activityId);
-                    
+
                 if (submission != null)
                 {
                     submission.Points = points;
                     submission.Status = status;
                     submission.GithubLink = githubLink;
                     submission.UpdatedDate = DateTime.UtcNow;
-                    
+
                     if (status == "Submitted" && submission.SubmissionDate == null)
                     {
                         submission.SubmissionDate = DateTime.UtcNow;
                     }
-                    
+
                     // Update the activity template's max points if different
                     if (submission.ActivityTemplate.MaxPoints != maxPoints)
                     {
                         submission.ActivityTemplate.MaxPoints = maxPoints;
                         submission.ActivityTemplate.UpdatedDate = DateTime.UtcNow;
                     }
-                    
+
                     // Update the tag if it's different (tag is stored in ActivityTemplate)
                     var newTag = tag == "Other" ? otherTag : tag;
                     if (submission.ActivityTemplate.Tag != newTag)
@@ -507,7 +507,11 @@ namespace elective_2_gradesheet.Services
             return await _context.Sections.Where(s => s.IsActive).ToListAsync();
         }
 
-        public async Task<(bool success, string message, int? studentId)> GetNextStudentAsync(int currentStudentId, int? sectionId = null, string activityName = null, bool includeChecked = false)
+        public async Task<(bool success, string message, int? studentId)> GetNextStudentAsync(
+      int currentStudentId,
+      int? sectionId = null,
+      string activityName = null,
+      bool includeChecked = false)
         {
             try
             {
@@ -516,6 +520,7 @@ namespace elective_2_gradesheet.Services
                 {
                     var currentStudent = await _context.Students
                         .FirstOrDefaultAsync(s => s.Id == currentStudentId);
+
                     if (currentStudent != null)
                     {
                         sectionId = currentStudent.SectionId;
@@ -525,6 +530,8 @@ namespace elective_2_gradesheet.Services
                 // Get all students in the section
                 var allStudents = await _context.Students
                     .Where(s => s.SectionId == sectionId)
+                    .OrderBy(s => s.LastName)
+                    .ThenBy(s => s.FirstName)
                     .Select(s => s.Id)
                     .ToListAsync();
 
@@ -533,52 +540,42 @@ namespace elective_2_gradesheet.Services
                 // If activity name is provided, filter based on it
                 if (!string.IsNullOrEmpty(activityName))
                 {
-                    // Get all active templates for this activity in the section
                     var templateIds = await _context.ActivityTemplates
                         .Where(at => at.Name == activityName && at.SectionId == sectionId && at.IsActive)
                         .Select(at => at.Id)
                         .ToListAsync();
 
-                    if (templateIds.Any())
+                    if (templateIds.Any() && !includeChecked)
                     {
-                        if (!includeChecked)
-                        {
-                            // Get IDs of students who have non-zero scores for this activity
-                            var studentsWithNonZeroScores = await _context.StudentSubmissions
-                                .Where(ss => templateIds.Contains(ss.ActivityTemplateId) && ss.Points > 0)
-                                .Select(ss => ss.StudentId)
-                                .ToListAsync();
+                        var studentsWithNonZeroScores = await _context.StudentSubmissions
+                            .Where(ss => templateIds.Contains(ss.ActivityTemplateId) && ss.Points > 0)
+                            .Select(ss => ss.StudentId)
+                            .ToListAsync();
 
-                            // Remove students with non-zero scores from eligible set
-                            eligibleStudentIds.ExceptWith(studentsWithNonZeroScores);
-                        }
+                        eligibleStudentIds.ExceptWith(studentsWithNonZeroScores);
                     }
                 }
 
-                // Final query to get the next student
+                // Final query - strictly alphabetical
                 var query = _context.Students
-                    .Where(s => eligibleStudentIds.Contains(s.Id));
+                    .Where(s => eligibleStudentIds.Contains(s.Id))
+                    .OrderBy(s => s.LastName)
+                    .ThenBy(s => s.FirstName);
 
-                // Get the next student after the current one
-                var nextStudent = await query
-                    .Where(s => s.Id > currentStudentId)
-                    .OrderBy(s => s.Id)
-                    .FirstOrDefaultAsync();
+                // Find current student's position in alphabetical order
+                var orderedStudents = await query.Select(s => s.Id).ToListAsync();
+                var currentIndex = orderedStudents.IndexOf(currentStudentId);
 
-                // If no next student, get the first student (wrap around)
-                if (nextStudent == null)
-                {
-                    nextStudent = await query
-                        .OrderBy(s => s.Id)
-                        .FirstOrDefaultAsync();
-                }
+                int nextIndex = (currentIndex >= 0 && currentIndex + 1 < orderedStudents.Count)
+                    ? currentIndex + 1
+                    : 0; // wrap around to first
 
-                if (nextStudent == null)
+                if (!orderedStudents.Any())
                 {
                     return (false, "No students found matching criteria.", null);
                 }
 
-                return (true, null, nextStudent.Id);
+                return (true, null, orderedStudents[nextIndex]);
             }
             catch (Exception ex)
             {
@@ -587,5 +584,4 @@ namespace elective_2_gradesheet.Services
         }
 
     }
-
 }
