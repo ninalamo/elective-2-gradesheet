@@ -507,6 +507,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var tag = button.getAttribute('data-tag');
         var githubLink = button.getAttribute('data-github-link');
         var status = button.getAttribute('data-status');
+        var isActive = button.getAttribute('data-is-active');
 
         // Load the rubric when modal opens
         loadActivityRubric(activityName);
@@ -520,13 +521,13 @@ document.addEventListener('DOMContentLoaded', function() {
         var githubLinkInput = editModal.querySelector('#editGithubLink');
         var maxPointsInput = editModal.querySelector('#editMaxPoints');
         var statusSelect = editModal.querySelector('#editStatus');
+        var isActiveCheckbox = editModal.querySelector('#editIsActive');
 
         // Reset tabs
         var detailsTab = new bootstrap.Tab(document.getElementById('details-tab'));
         detailsTab.show();
         resultsTabButton.style.display = 'none';
         consoleTabButton.style.display = 'none';
-
 
         activityIdInput.value = activityId;
         activityNameP.textContent = activityName;
@@ -542,8 +543,21 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Set status dropdown
-        statusSelect.value = status;
+        // Set status dropdown (default to 'Missing' if not present)
+        var validStatuses = ["Turned In", "Viewed", "Not Turned In", "Missing", "Checked"];
+        if (validStatuses.includes(status)) {
+            statusSelect.value = status;
+        } else {
+            statusSelect.value = "Missing";
+        }
+        statusContainer.style.display = 'block'; // Always show status dropdown
+
+        // Set isActive checkbox (default to checked)
+        if (typeof isActive !== 'undefined' && isActive !== null) {
+            isActiveCheckbox.checked = (isActive === 'true' || isActive === 'True' || isActive === true);
+        } else {
+            isActiveCheckbox.checked = true;
+        }
 
         if (points !== "0") {
             document.getElementById('rubric-tab').style.display = 'none';
@@ -563,7 +577,7 @@ document.addEventListener('DOMContentLoaded', function() {
             pointsInput.value = '';
             maxPointsInput.value = maxPoints;
 
-            statusSelect.value = "Added";
+            statusSelect.value = "Missing";
 
             var tagOptions = ['Assignment', 'Hands-on'];
             if (tag && tagOptions.includes(tag)) {

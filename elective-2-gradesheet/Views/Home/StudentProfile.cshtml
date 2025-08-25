@@ -230,10 +230,16 @@
                                                 <div class="mb-3" id="statusContainer">
                                                     <label for="editStatus" class="form-label">Status</label>
                                                     <select id="editStatus" name="status" class="form-control" required>
-                                                        <option value="Added">Added</option>
-                                                        <option value="Turned in">Turned in</option>
-                                                        <option value="Missing">Missing</option>
+                                                        <option value="Turned In">Turned In</option>
+                                                        <option value="Viewed">Viewed</option>
+                                                        <option value="Not Turned In">Not Turned In</option>
+                                                        <option value="Missing" selected>Missing</option>
+                                                        <option value="Checked">Checked</option>
                                                     </select>
+                                                </div>
+                                                <div class="form-check mt-2">
+                                                    <input class="form-check-input" type="checkbox" id="editIsActive" name="isActive" checked />
+                                                    <label class="form-check-label" for="editIsActive">Active</label>
                                                 </div>
                                             </div>
                                         </div>
