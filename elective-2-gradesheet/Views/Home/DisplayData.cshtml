@@ -16,13 +16,13 @@
                     <table class="table table-striped table-bordered table-hover">
                         <thead class="thead-dark">
                             <tr>
-                                <th>Last Name</th>
-                                <th>First Name</th>
-                                <th>Email</th>
-                                <th>Activity Name</th>
-                                <th>Status</th>
-                                <th>Points</th>
-                                <th>Max Points</th>
+                                <th data-bs-toggle="tooltip" title="Student's Last Name">Last Name</th>
+                                <th data-bs-toggle="tooltip" title="Student's First Name">First Name</th>
+                                <th data-bs-toggle="tooltip" title="Registered Email Address">Email</th>
+                                <th data-bs-toggle="tooltip" title="Activity or assignment name">Activity Name</th>
+                                <th data-bs-toggle="tooltip" title="Completion status">Status</th>
+                                <th data-bs-toggle="tooltip" title="Score obtained">Points</th>
+                                <th data-bs-toggle="tooltip" title="Maximum possible score">Max Points</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -50,10 +50,15 @@
             }
 
             <div class="mt-4 text-center">
-                <a asp-action="Index" class="btn btn-secondary rounded-pill px-3 shadow-sm">
+                <a asp-action="Index" class="btn btn-secondary rounded-pill px-3 shadow-sm"
+                   data-bs-toggle="tooltip" title="Go back and upload a new CSV file">
                     <i class="fas fa-upload me-2"></i> Upload Another File
                 </a>
             </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script src="~/js/views/preview.js"></script>
+}

@@ -1,7 +1,6 @@
 ﻿@using elective_2_gradesheet.Data.Entities
 @model CsvDisplayViewModel
 
-
 @{
     ViewData["Title"] = "CSV Importer";
     var sections = ViewBag.Sections as IEnumerable<SelectListItem>;
@@ -33,7 +32,8 @@
                         <div class="row align-items-end">
                             <div class="col-md-5">
                                 <div class="form-group mb-3">
-                                    <label for="fileUpload" class="form-label fw-semibold">Select CSV File:</label>
+                                    <label for="fileUpload" class="form-label fw-semibold"
+                                           data-bs-toggle="tooltip" title="Choose a CSV file to upload">Select CSV File:</label>
                                     <input type="file" id="fileUpload" name="file" class="form-control rounded-md" accept=".csv" required />
                                 </div>
                             </div>
@@ -53,7 +53,8 @@
                             </div>
                         </div>
                         <div class="d-grid mt-3">
-                            <button type="submit" id="uploadButton" class="btn btn-primary btn-md rounded-pill shadow-sm" disabled>
+                            <button type="submit" id="uploadButton" class="btn btn-primary btn-md rounded-pill shadow-sm"
+                                    disabled data-bs-toggle="tooltip" title="Click to save data once all fields are valid">
                                 <i class="fas fa-save me-2"></i> Upload and Save Data
                             </button>
                         </div>
@@ -108,34 +109,5 @@
 </div>
 
 @section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const fileInput = document.getElementById('fileUpload');
-            const sectionSelect = document.getElementById('sectionSelect');
-            const periodSelect = document.getElementById('periodSelect');
-            const uploadButton = document.getElementById('uploadButton');
-
-            function validateForm() {
-                const file = fileInput.files[0];
-                const isFileValid = file && file.name.toLowerCase().endsWith('.csv');
-                const isSectionSelected = sectionSelect.value !== '';
-                const isPeriodSelected = periodSelect.value !== '';
-
-                // Enable the button only if all conditions are met
-                if (isFileValid && isSectionSelected && isPeriodSelected) {
-                    uploadButton.disabled = false;
-                } else {
-                    uploadButton.disabled = true;
-                }
-            }
-
-            // Add event listeners to all relevant inputs
-            fileInput.addEventListener('change', validateForm);
-            sectionSelect.addEventListener('change', validateForm);
-            periodSelect.addEventListener('change', validateForm);
-
-            // Initial validation check on page load
-            validateForm();
-        });
-    </script>
+    <script src="~/js/views/upload.js"></script>
 }
