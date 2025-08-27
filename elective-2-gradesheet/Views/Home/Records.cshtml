@@ -53,9 +53,14 @@
                      style="background-color: #36454F;">
                     <h5 class="mb-0">
                         <!-- Student Name is now the clickable link -->
-                        <a asp-action="StudentProfile" asp-route-id="@studentGroup.StudentId" class="text-white text-decoration-none">
+                        <a asp-action="StudentProfile"
+                           asp-route-id="@studentGroup.StudentId"
+                           class="text-white text-decoration-none"
+                           data-bs-toggle="tooltip"
+                           title="Click to Open Profile">
                             <i class="fas fa-user-circle me-2"></i> @studentGroup.StudentFullName - @studentGroup.StudentNumber
                         </a>
+
                         <span class="badge bg-secondary rounded-pill px-2 py-1 ms-2">@studentGroup.SectionName</span>
                     </h5>
                     <!-- Collapse toggle is now a separate icon -->
