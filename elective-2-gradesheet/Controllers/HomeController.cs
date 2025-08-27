@@ -1,4 +1,3 @@
-
 using elective_2_gradesheet.Data;
 using elective_2_gradesheet.Data.Entities;
 using elective_2_gradesheet.Models;
@@ -54,7 +53,7 @@ namespace CsvImporter.Controllers
                 var records = _csvParsingService.ParseGradesCsv(file).ToList();
 
                 model.GradeRecords = records;
-                
+
 
                 // 1. Pass the selected GradingPeriod from the model to the service.
                 await _gradeService.ProcessAndSaveGradesAsync(model);
@@ -62,7 +61,7 @@ namespace CsvImporter.Controllers
                 // 2. Convert the GradingPeriod enum to a string for display.
                 var tag = model.GradingPeriod.ToString().ToUpper();
 
-               
+
 
                 return View("Index", model);
             }
@@ -117,10 +116,10 @@ namespace CsvImporter.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> UpdateActivity( int studentId, double points, double maxPoints, GradingPeriod period, string tag, string otherTag, string githubLink, string status, int? activityId = default, string activityName = "", int? newId = 0)
+        public async Task<IActionResult> UpdateActivity(int studentId, double points, double maxPoints, GradingPeriod period, string tag, string otherTag, string githubLink, string status, int? activityId = default, string activityName = "", int? newId = 0)
         {
             // The UpdateActivityAsync method in the service will handle the logic
-            await _gradeService.UpdateActivityAsync( studentId, points, maxPoints, period, tag, otherTag, githubLink, status, activityId, activityName, newId);
+            await _gradeService.UpdateActivityAsync(studentId, points, maxPoints, period, tag, otherTag, githubLink, status, activityId, activityName, newId);
             return RedirectToAction("StudentProfile", new { id = studentId });
         }
 
