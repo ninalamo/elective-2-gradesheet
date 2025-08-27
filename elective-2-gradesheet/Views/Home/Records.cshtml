@@ -7,7 +7,20 @@
 }
 
 <div class="container mt-5">
-    <h2 class="mb-4 text-primary text-center"><i class="fas fa-database me-2"></i> All Grade Records</h2>
+    <!-- Page Header with Navigation -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="display-6 text-primary mb-0">
+            <i class="fas fa-database me-2"></i>Grade Records Dashboard
+        </h1>
+        <div>
+            <a asp-action="Index" class="btn btn-outline-success rounded-pill px-4 shadow-sm">
+                <i class="fas fa-upload me-2"></i> Upload CSV
+            </a>
+            <a asp-controller="Dev" asp-action="Index" class="btn btn-outline-secondary rounded-pill px-4 shadow-sm ms-2">
+                <i class="fas fa-code me-2"></i> Dev Notes
+            </a>
+        </div>
+    </div>
 
     <!-- Filter Form -->
     <div class="card shadow-sm mb-4 rounded-lg">
@@ -34,8 +47,8 @@
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary w-100 rounded-pill shadow-sm">
-                            <i class="fas fa-search me-1"></i> Filter
+                        <button type="button" class="btn btn-secondary w-100 rounded-pill shadow-sm" id="resetButton">
+                            <i class="fas fa-undo me-1"></i> Reset Filter
                         </button>
                     </div>
                 </div>
@@ -53,9 +66,11 @@
                      style="background-color: #36454F;">
                     <h5 class="mb-0">
                         <!-- Student Name is now the clickable link -->
-                        <a asp-action="StudentProfile" asp-route-id="@studentGroup.StudentId" class="text-white text-decoration-none">
+                        <a asp-action="StudentProfile" asp-route-id="@studentGroup.StudentId" class="text-white text-decoration-none"
+                           data-bs-toggle="tooltip" title="Click to View Profile">
                             <i class="fas fa-user-circle me-2"></i> @studentGroup.StudentFullName - @studentGroup.StudentNumber
                         </a>
+
                         <span class="badge bg-secondary rounded-pill px-2 py-1 ms-2">@studentGroup.SectionName</span>
                     </h5>
                     <!-- Collapse toggle is now a separate icon -->
@@ -146,29 +161,3 @@
         </ul>
     </nav>
 </div>
-
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Add event listeners for collapse icons to rotate
-            var collapseToggles = document.querySelectorAll('.card-header button[data-bs-toggle="collapse"]');
-            collapseToggles.forEach(function(toggle) {
-                var collapseElement = document.querySelector(toggle.getAttribute('data-bs-target'));
-                var icon = toggle.querySelector('.collapse-icon');
-
-                // Initial state check (if you want some to be open by default)
-                if (collapseElement.classList.contains('show')) {
-                    icon.classList.add('fa-rotate-180');
-                }
-
-                collapseElement.addEventListener('show.bs.collapse', function () {
-                    icon.classList.add('fa-rotate-180');
-                });
-
-                collapseElement.addEventListener('hide.bs.collapse', function () {
-                    icon.classList.remove('fa-rotate-180');
-                });
-            });
-        });
-    </script>
-}

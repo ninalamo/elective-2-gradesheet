@@ -1,0 +1,56 @@
+@using elective_2_gradesheet.Data.Entities
+@model StudentProfileViewModel
+
+<!-- Combined Filter and Bulk Add Section -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">
+            <i class="fas fa-filter me-2"></i>Filters & Actions
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <!-- Filter Form part (now in a column) -->
+            <div class="col-md-6">
+                <form asp-action="StudentProfile" method="get">
+                    <input type="hidden" name="id" value="@Model.StudentId" />
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Filter by Period:</label>
+                            <select name="period" asp-for="CurrentPeriod" asp-items="Html.GetEnumSelectList<GradingPeriod>()" class="form-control">
+                                <option value="">All Periods</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-1"></i>Filter
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Bulk Add Form part (now in a column, separated by a visual line for clarity) -->
+            <div class="col-md-6">
+                <form id="bulkAddForm" asp-action="BulkAddMissingActivities" method="post">
+                    <input type="hidden" name="studentId" value="@Model.StudentId" />
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-8">
+                            <label for="bulkAddPeriod" class="form-label fw-semibold">Bulk Add Missing for Period:</label>
+                            <select id="bulkAddPeriod" name="gradingPeriod" asp-items="Html.GetEnumSelectList<GradingPeriod>()" class="form-control" required>
+                                <option value="">Select Period</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-warning w-100">
+                                <i class="fas fa-plus me-1"></i>Bulk Add Missing
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- End Combined Filter and Bulk Add Section -->
