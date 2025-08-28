@@ -7,11 +7,11 @@
 }
 
 <div class="container mt-5">
-    <h2 class="mb-4 text-primary text-center"><i class="fas fa-database me-2"></i> All Grade Records</h2>
+    <h2 class="mb-4 text-primary text-center" style="font-family: 'Georgia', serif; font-weight: 700; text-shadow: 2px 2px 4px rgba(139, 69, 19, 0.2);"><i class="fas fa-database me-2"></i> All Grade Records</h2>
 
     <!-- Filter Form -->
     <div class="card shadow-sm mb-4 rounded-lg">
-        <div class="card-header text-white py-2 rounded-top-lg" style="background-color: #03A9F4;">
+        <div class="card-header text-white py-2 rounded-top-lg" style="background: linear-gradient(135deg, #5F9EA0, #708090);">
             <h5 class="mb-0"><i class="fas fa-filter me-2"></i> Filter Records</h5>
         </div>
         <div class="card-body p-4">
@@ -33,10 +33,15 @@
                             <option value="">All Periods</option>
                         </select>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-1">
                         <button type="submit" class="btn btn-primary w-100 rounded-pill shadow-sm">
                             <i class="fas fa-search me-1"></i> Filter
                         </button>
+                    </div>
+                    <div class="col-md-1">
+                        <a href="@Url.Action("Records")" class="btn btn-secondary w-100 rounded-pill shadow-sm">
+                            <i class="fas fa-times me-1"></i> Reset
+                        </a>
                     </div>
                 </div>
             </form>
@@ -50,10 +55,10 @@
         {
             <div class="card mb-3 shadow-sm rounded-lg">
                 <div class="card-header text-white py-2 rounded-top-lg d-flex justify-content-between align-items-center"
-                     style="background-color: #36454F;">
+                     style="background: linear-gradient(135deg, #8B4513, #A0522D);">
                     <h5 class="mb-0">
                         <!-- Student Name is now the clickable link -->
-                        <a asp-action="StudentProfile" asp-route-id="@studentGroup.StudentId" class="text-white text-decoration-none">
+                        <a asp-action="StudentProfile" asp-route-id="@studentGroup.StudentId" class="text-white text-decoration-none" data-bs-toggle="tooltip" title="Click to Open Profile">
                             <i class="fas fa-user-circle me-2"></i> @studentGroup.StudentFullName - @studentGroup.StudentNumber
                         </a>
                         <span class="badge bg-secondary rounded-pill px-2 py-1 ms-2">@studentGroup.SectionName</span>
@@ -147,28 +152,3 @@
     </nav>
 </div>
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // Add event listeners for collapse icons to rotate
-            var collapseToggles = document.querySelectorAll('.card-header button[data-bs-toggle="collapse"]');
-            collapseToggles.forEach(function(toggle) {
-                var collapseElement = document.querySelector(toggle.getAttribute('data-bs-target'));
-                var icon = toggle.querySelector('.collapse-icon');
-
-                // Initial state check (if you want some to be open by default)
-                if (collapseElement.classList.contains('show')) {
-                    icon.classList.add('fa-rotate-180');
-                }
-
-                collapseElement.addEventListener('show.bs.collapse', function () {
-                    icon.classList.add('fa-rotate-180');
-                });
-
-                collapseElement.addEventListener('hide.bs.collapse', function () {
-                    icon.classList.remove('fa-rotate-180');
-                });
-            });
-        });
-    </script>
-}

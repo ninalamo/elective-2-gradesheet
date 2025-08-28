@@ -1,0 +1,208 @@
+@{
+    ViewData["Title"] = "Developer Reflection";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-lg rounded-lg">
+                <div class="card-header text-white text-center py-4">
+                    <h1 class="mb-0"><i class="fas fa-code me-3"></i>Developer Reflection</h1>
+                    <p class="mb-0 mt-2">A Journey Through ASP.NET Core Development</p>
+                </div>
+                <div class="card-body p-5">
+                    
+                    <div class="mb-5">
+                        <h2 class="text-primary mb-4"><i class="fas fa-lightbulb me-2"></i>Project Overview</h2>
+                        <p class="lead">
+                            This ASP.NET Core application represents a comprehensive gradesheet management system that I developed 
+                            to help educators track and manage student activities and grades efficiently.
+                        </p>
+                        <p>
+                            The application features a modern maroon and grey color scheme, implements partial views for better code 
+                            organization, and provides a clean, user-friendly interface for managing academic records.
+                        </p>
+                    </div>
+
+                    <div class="mb-5">
+                        <h2 class="text-primary mb-4"><i class="fas fa-tools me-2"></i>Technical Implementation</h2>
+                        <h4 class="text-secondary mb-3">Architecture Choices</h4>
+                        <ul class="list-group list-group-flush mb-4">
+                            <li class="list-group-item"><strong>MVC Pattern:</strong> Utilized ASP.NET Core MVC architecture for clear separation of concerns</li>
+                            <li class="list-group-item"><strong>Entity Framework:</strong> Implemented for database operations with a code-first approach</li>
+                            <li class="list-group-item"><strong>Partial Views:</strong> Extracted reusable components for better maintainability</li>
+                            <li class="list-group-item"><strong>JavaScript Separation:</strong> Moved view-specific JavaScript to dedicated files for better organization</li>
+                        </ul>
+
+                        <h4 class="text-secondary mb-3">Key Features Implemented</h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">CSV Import functionality</li>
+                                    <li class="list-group-item">Advanced filtering and search</li>
+                                    <li class="list-group-item">Student profile management</li>
+                                    <li class="list-group-item">Activity tracking and editing</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">Bulk operations for missing activities</li>
+                                    <li class="list-group-item">Responsive design with Bootstrap</li>
+                                    <li class="list-group-item">Toast notifications for user feedback</li>
+                                    <li class="list-group-item">Pagination for large datasets</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <h2 class="text-primary mb-4"><i class="fas fa-palette me-2"></i>Design and User Experience</h2>
+                        <p>
+                            One of the most significant changes I made was implementing a warm, vintage brownish color scheme 
+                            throughout the application. This created a nostalgic, sophisticated interface that evokes 
+                            classic elegance compared to modern flat designs.
+                        </p>
+                        <div class="row mt-4">
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="p-3 rounded" style="background: linear-gradient(135deg, #8B4513, #A0522D); color: #F5F2E8;">
+                                    <h5>Primary Brown</h5>
+                                    <code>#8B4513 → #A0522D</code>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="p-3 rounded" style="background-color: #D2B48C; color: #3C2E26;">
+                                    <h5>Vintage Tan</h5>
+                                    <code>#D2B48C</code>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="p-3 rounded" style="background-color: #F5F2E8; color: #3C2E26; border: 2px solid #D2B48C;">
+                                    <h5>Vintage Cream</h5>
+                                    <code>#F5F2E8</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <h2 class="text-primary mb-4"><i class="fas fa-code-branch me-2"></i>Code Organization Improvements</h2>
+                        <p>
+                            A major focus of this iteration was improving code organization and maintainability:
+                        </p>
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">Partial Views Implementation</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul>
+                                    <li><strong>_EditActivityModalPartial.cshtml:</strong> Extracted the complex modal logic for activity editing</li>
+                                    <li><strong>_StudentProfileFormsPartial.cshtml:</strong> Separated filter and bulk add forms for reusability</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="mb-0">JavaScript Modularization</h5>
+                            </div>
+                            <div class="card-body">
+                                <ul>
+                                    <li><strong>index.js:</strong> Form validation logic for CSV upload</li>
+                                    <li><strong>records.js:</strong> Collapse functionality and tooltip initialization</li>
+                                    <li><strong>studentProfile.js:</strong> Complex modal and AJAX functionality</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <h2 class="text-primary mb-4"><i class="fas fa-chart-line me-2"></i>Challenges and Solutions</h2>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h5 class="mb-0">Challenges Faced</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul>
+                                            <li>Managing complex state in modal dialogs</li>
+                                            <li>Ensuring consistent styling across components</li>
+                                            <li>Implementing efficient data filtering</li>
+                                            <li>Handling AJAX form submissions</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0">Solutions Implemented</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <ul>
+                                            <li>Extracted JavaScript into modular files</li>
+                                            <li>Created comprehensive CSS variables</li>
+                                            <li>Implemented server-side pagination</li>
+                                            <li>Used modern async/await patterns</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <h2 class="text-primary mb-4"><i class="fas fa-rocket me-2"></i>Key Learnings</h2>
+                        <div class="alert alert-info">
+                            <h5 class="alert-heading">Technical Insights</h5>
+                            <ul class="mb-0">
+                                <li>The importance of consistent code organization from the beginning of a project</li>
+                                <li>How partial views can significantly improve maintainability in complex applications</li>
+                                <li>The value of separating JavaScript concerns for better debugging and maintenance</li>
+                                <li>How proper CSS architecture can enhance the entire user experience</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h2 class="text-primary mb-4"><i class="fas fa-future me-2"></i>Future Enhancements</h2>
+                        <p>
+                            Looking forward, there are several areas where this application could be further improved:
+                        </p>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <ul class="list-group">
+                                    <li class="list-group-item">
+                                        <strong>Performance Optimization:</strong> Implement caching strategies for frequently accessed data
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Authentication & Authorization:</strong> Add user management and role-based access control
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>API Development:</strong> Create REST API endpoints for mobile application integration
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Advanced Analytics:</strong> Implement reporting and analytics dashboard for grade trends
+                                    </li>
+                                    <li class="list-group-item">
+                                        <strong>Real-time Updates:</strong> Add SignalR for real-time notifications and updates
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="card-footer text-center py-4">
+                    <p class="mb-2"><strong>Developed by:</strong> Francine Obis</p>
+                    <p class="mb-0 text-muted">ASP.NET Core MVC Application - Midterm Laboratory Activity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center mt-5">
+        <a asp-controller="Home" asp-action="Records" class="btn btn-primary btn-lg">
+            <i class="fas fa-arrow-left me-2"></i> Back to Application
+        </a>
+    </div>
+</div>
