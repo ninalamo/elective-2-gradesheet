@@ -499,7 +499,6 @@ document.addEventListener('DOMContentLoaded', function() {
     editModal.addEventListener('show.bs.modal', function (event) {
         var button = event.relatedTarget;
         var activityId = button.getAttribute('data-activity-id');
-        var newId = button.getAttribute('data-new-id');
         var activityName = button.getAttribute('data-activity-name');
         var points = button.getAttribute('data-points');
         var maxPoints = button.getAttribute('data-max-points');
@@ -513,9 +512,8 @@ document.addEventListener('DOMContentLoaded', function() {
         loadActivityRubric(activityName);
 
         var activityIdInput = editModal.querySelector('#editActivityId');
-        activityNameP = editModal.querySelector('#editActivityName'); // Set global reference
+        activityNameP = editModal.querySelector('#editActivityName');
         var activityNameHiddenInput = editModal.querySelector('#editActivityNameInput');
-
         var periodSelect = editModal.querySelector('#editPeriod');
         var tagSelect = editModal.querySelector('#editTag');
         var githubLinkInput = editModal.querySelector('#editGithubLink');
@@ -529,12 +527,34 @@ document.addEventListener('DOMContentLoaded', function() {
         resultsTabButton.style.display = 'none';
         consoleTabButton.style.display = 'none';
 
+        // Set form values
         activityIdInput.value = activityId;
         activityNameP.textContent = activityName;
         activityNameHiddenInput.value = activityName;
         pointsInput.value = points;
         maxPointsInput.value = maxPoints;
-        calculateTransmutedGrade(); // Calculate on open
+        githubLinkInput.value = githubLink;
+        calculateTransmutedGrade();
+
+        // --- MODIFICATION START ---
+        // The conditional check for status === "Missing" has been removed.
+        // The form now behaves the same way for all activity statuses.
+
+        // Ensure all containers are visible
+        githubLinkContainer.style.display = 'block';
+        periodContainer.style.display = 'block';
+        tagContainer.style.display = 'block';
+        maxPointsContainer.style.display = 'block';
+        statusContainer.style.display = 'block';
+
+        // Ensure fields are not read-only and are required as needed
+        maxPointsInput.readOnly = false;
+        githubLinkInput.required = false;
+        tagSelect.required = false;
+        periodSelect.required = false;
+        maxPointsInput.required = true; // Max points should generally be required
+        statusSelect.required = true;
+
         // Set period dropdown
         for (var i = 0; i < periodSelect.options.length; i++) {
             if (periodSelect.options[i].text.toUpperCase() === period.toUpperCase()) {
@@ -543,83 +563,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        // Set status dropdown (default to 'Missing' if not present)
+        // Set status dropdown
         var validStatuses = ["Turned In", "Viewed", "Not Turned In", "Missing", "Checked"];
         if (validStatuses.includes(status)) {
             statusSelect.value = status;
         } else {
-            statusSelect.value = "Missing";
+            statusSelect.value = "Missing"; // Default to Missing if status is invalid
         }
-        statusContainer.style.display = 'block'; // Always show status dropdown
 
-        // Set isActive checkbox (default to checked)
-        if (typeof isActive !== 'undefined' && isActive !== null) {
-            isActiveCheckbox.checked = (isActive === 'true' || isActive === 'True' || isActive === true);
+        // Set isActive checkbox
+        isActiveCheckbox.checked = (isActive === 'true' || isActive === 'True' || isActive === true);
+
+        // Set tag dropdown
+        var tagOptions = ['Assignment', 'Hands-on'];
+        if (tag && tagOptions.includes(tag)) {
+            tagSelect.value = tag;
+            otherTagContainer.style.display = 'none';
+            otherTagInput.required = false;
         } else {
-            isActiveCheckbox.checked = true;
+            tagSelect.value = 'Other';
+            otherTagContainer.style.display = 'block';
+            otherTagInput.required = true;
+            otherTagInput.value = tag || '';
         }
 
-        if (points !== "0") {
-            document.getElementById('rubric-tab').style.display = 'none';
-        } else {
-            document.getElementById('rubric-tab').style.display = 'block';
-        }
+        // --- MODIFICATION END ---
 
-        // Determine form behavior based on status
-        if (status === "Missing") {
-            githubLinkContainer.style.display = 'block';
-            periodContainer.style.display = 'block';
-            tagContainer.style.display = 'block';
-            maxPointsContainer.style.display = 'block';
-            statusContainer.style.display = 'block';
-
-            githubLinkInput.value = '';
-            pointsInput.value = '';
-            maxPointsInput.value = maxPoints;
-
-            statusSelect.value = "Missing";
-
-            var tagOptions = ['Assignment', 'Hands-on'];
-            if (tag && tagOptions.includes(tag)) {
-                tagSelect.value = tag;
-                otherTagContainer.style.display = 'none';
-                otherTagInput.required = false;
-            } else {
-                tagSelect.value = 'Other';
-                otherTagContainer.style.display = 'block';
-                otherTagInput.required = true;
-                otherTagInput.value = tag || '';
-            }
-
-        } else {
-            githubLinkContainer.style.display = 'block';
-            periodContainer.style.display = 'none';
-            tagContainer.style.display = 'none';
-            maxPointsContainer.style.display = 'block';
-            statusContainer.style.display = 'none';
-
-            maxPointsInput.readOnly = true;
-
-            githubLinkInput.value = githubLink;
-            maxPointsInput.value = maxPoints;
-
-            githubLinkInput.required = false;
-            tagSelect.required = false;
-            periodSelect.required = false;
-            maxPointsInput.required = false;
-            statusSelect.required = false;
-            var tagOptions = ['Assignment', 'Hands-on'];
-            if (tag && tagOptions.includes(tag)) {
-                tagSelect.value = tag;
-                otherTagContainer.style.display = 'none';
-                otherTagInput.required = false;
-            } else {
-                tagSelect.value = 'Other';
-                otherTagContainer.style.display = 'none';
-                otherTagInput.required = true;
-                otherTagInput.value = tag || '';
-            }
-        }
+        document.getElementById('rubric-tab').style.display = 'block';
         toggleCheckButton();
     });
 
@@ -790,6 +760,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load activity template rubric function
     async function loadActivityTemplateRubric(activityName) {
+        const rubricTextarea = document.getElementById('rubricJson');
+        const formatButton = document.getElementById('prettifyJsonButton');
+        const saveChangesBtn = editModal.querySelector('#saveChangesBtn');
+
+        // --- MODIFICATION START ---
+        // Disable all action buttons by default until a valid rubric is confirmed.
+        saveChangesBtn.disabled = true;
+        checkButton.disabled = true;
+        checkRepoButton.disabled = true;
+        rubricTextarea.value = 'Loading rubric...'; // Set initial loading message.
+        rubricTextarea.readOnly = true; // Make it readonly while loading/if failed
+
         try {
             const response = await fetch('/Home/GetActivityTemplateRubric', {
                 method: 'POST',
@@ -798,16 +780,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({ activityName: activityName })
             });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                rubricJson.value = result.rubricJson;
-                showToast('Activity rubric loaded automatically', 'info');
+
+            const data = await response.json();
+
+            // Only proceed if the fetch was successful AND a rubric was returned.
+            if (data.success && data.rubricJson) {
+                rubricTextarea.readOnly = false; // Allow editing
+                saveChangesBtn.disabled = false; // Enable saving
+
+                try {
+                    const parsed = JSON.parse(data.rubricJson);
+                    rubricTextarea.value = JSON.stringify(parsed, null, 4);
+                } catch {
+                    rubricTextarea.value = data.rubricJson;
+                }
+
+                formatButton.disabled = false;
+                // Re-evaluate the check buttons' state after loading the rubric.
                 toggleCheckButtons();
+            } else {
+                // If no rubric is found, keep buttons disabled and inform the user.
+                rubricTextarea.value = data.message || 'No rubric found. Saving and scoring are disabled.';
+                showToast('A rubric is required for this activity. Actions are disabled.', 'warning');
+                formatButton.disabled = true;
             }
+            // --- MODIFICATION END ---
         } catch (error) {
-            console.log('No rubric found for activity:', activityName);
+            console.error('Error loading rubric:', error);
+            rubricTextarea.value = 'Error loading rubric. Actions are disabled.';
+            formatButton.disabled = true;
+            // Ensure buttons remain disabled on error.
+            saveChangesBtn.disabled = true;
         }
     }
 
