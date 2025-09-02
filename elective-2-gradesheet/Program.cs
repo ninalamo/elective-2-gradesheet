@@ -1,18 +1,13 @@
-using elective_2_gradesheet.Data;
+using elective_2_gradesheet.Configuration;
 using elective_2_gradesheet.Services;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddControllersWithViews();
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-
-builder.Services.AddScoped<IGradeService, GradeService>();
+// Configure database provider based on settings
+DatabaseConfiguration.ConfigureServices(builder.Services, builder.Configuration);
 builder.Services.AddScoped<ICsvParsingService, CsvParsingService>(); 
 builder.Services.AddScoped<IGitService, GitService>();
 builder.Services.AddScoped<IActivityTemplateService, ActivityTemplateService>();
@@ -20,31 +15,8 @@ builder.Services.AddScoped<IActivityTemplateService, ActivityTemplateService>();
 
 var app = builder.Build();
 
-// Auto-migrate database on startup
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    try
-    {
-        var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
-        if (pendingMigrations.Any())
-        {
-            Console.WriteLine($"Applying {pendingMigrations.Count()} pending migrations...");
-            await context.Database.MigrateAsync();
-            Console.WriteLine("Database migrations applied successfully.");
-        }
-        else
-        {
-            Console.WriteLine("Database is up to date.");
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error during database migration: {ex.Message}");
-        // In production, you might want to handle this differently
-        // For now, we'll continue startup but log the error
-    }
-}
+// Initialize database
+await DatabaseConfiguration.InitializeDatabaseAsync(app.Services, app.Configuration);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

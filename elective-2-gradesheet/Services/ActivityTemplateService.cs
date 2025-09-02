@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using elective_2_gradesheet.Data;
+using elective_2_gradesheet.Data.Entities;
 using elective_2_gradesheet.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,10 +9,10 @@ namespace elective_2_gradesheet.Services
 {
     public class ActivityTemplateService : IActivityTemplateService
     {
-        private readonly ApplicationDbContext _context;
+        private readonly DbContext _context;
         private readonly ILogger<ActivityTemplateService> _logger;
 
-        public ActivityTemplateService(ApplicationDbContext context, ILogger<ActivityTemplateService> logger)
+        public ActivityTemplateService(DbContext context, ILogger<ActivityTemplateService> logger)
         {
             _context = context;
             _logger = logger;
@@ -266,7 +267,7 @@ namespace elective_2_gradesheet.Services
             {
                 var stats = new ActivityTemplateStatsViewModel();
 
-                var templates = await _context.ActivityTemplates
+                var templates = await _context.Set<ActivityTemplate>()
                     .Include(at => at.Section)
                     .ToListAsync();
 

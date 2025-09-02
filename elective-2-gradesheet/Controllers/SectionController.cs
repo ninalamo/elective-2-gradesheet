@@ -1,27 +1,22 @@
-using elective_2_gradesheet.Data;
 using elective_2_gradesheet.Data.Entities;
+using elective_2_gradesheet.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace elective_2_gradesheet.Controllers
 {
     public class SectionController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ISectionService _sectionService;
 
-        public SectionController(ApplicationDbContext context)
+        public SectionController(ISectionService sectionService)
         {
-            _context = context;
+            _sectionService = sectionService;
         }
 
         // GET: Section
         public async Task<IActionResult> Index()
         {
-            var sections = await _context.Sections
-                .Include(s => s.Students)
-                .Include(s => s.ActivityTemplates)
-                .OrderBy(s => s.Name)
-                .ToListAsync();
+            var sections = await _sectionService.GetAllSectionsAsync();
             return View(sections);
         }
 
@@ -33,10 +28,7 @@ namespace elective_2_gradesheet.Controllers
                 return NotFound();
             }
 
-            var section = await _context.Sections
-                .Include(s => s.Students)
-                .Include(s => s.ActivityTemplates)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var section = await _sectionService.GetSectionWithDetailsAsync(id.Value);
                 
             if (section == null)
             {
@@ -59,19 +51,15 @@ namespace elective_2_gradesheet.Controllers
         {
             if (ModelState.IsValid)
             {
-                // Check if section name already exists for the same school year
-                var existingSection = await _context.Sections
-                    .FirstOrDefaultAsync(s => s.Name == section.Name && s.SchoolYear == section.SchoolYear);
+                var result = await _sectionService.CreateSectionAsync(section);
                 
-                if (existingSection != null)
+                if (!result.success)
                 {
-                    ModelState.AddModelError("Name", "A section with this name already exists for the selected school year.");
+                    ModelState.AddModelError("Name", result.message);
                     return View(section);
                 }
 
-                _context.Add(section);
-                await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = $"Section '{section.Name}' created successfully!";
+                TempData["SuccessMessage"] = result.message;
                 return RedirectToAction(nameof(Index));
             }
             return View(section);
@@ -85,7 +73,7 @@ namespace elective_2_gradesheet.Controllers
                 return NotFound();
             }
 
-            var section = await _context.Sections.FindAsync(id);
+            var section = await _sectionService.GetSectionByIdAsync(id.Value);
             if (section == null)
             {
                 return NotFound();
@@ -105,33 +93,15 @@ namespace elective_2_gradesheet.Controllers
 
             if (ModelState.IsValid)
             {
-                try
+                var result = await _sectionService.UpdateSectionAsync(section);
+                
+                if (!result.success)
                 {
-                    // Check if section name already exists for the same school year (excluding current section)
-                    var existingSection = await _context.Sections
-                        .FirstOrDefaultAsync(s => s.Name == section.Name && s.SchoolYear == section.SchoolYear && s.Id != id);
-                    
-                    if (existingSection != null)
-                    {
-                        ModelState.AddModelError("Name", "A section with this name already exists for the selected school year.");
-                        return View(section);
-                    }
+                    ModelState.AddModelError("Name", result.message);
+                    return View(section);
+                }
 
-                    _context.Update(section);
-                    await _context.SaveChangesAsync();
-                    TempData["SuccessMessage"] = $"Section '{section.Name}' updated successfully!";
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!SectionExists(section.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+                TempData["SuccessMessage"] = result.message;
                 return RedirectToAction(nameof(Index));
             }
             return View(section);
@@ -145,10 +115,7 @@ namespace elective_2_gradesheet.Controllers
                 return NotFound();
             }
 
-            var section = await _context.Sections
-                .Include(s => s.Students)
-                .Include(s => s.ActivityTemplates)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var section = await _sectionService.GetSectionWithDetailsAsync(id.Value);
                 
             if (section == null)
             {
@@ -163,30 +130,16 @@ namespace elective_2_gradesheet.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var section = await _context.Sections
-                .Include(s => s.Students)
-                .Include(s => s.ActivityTemplates)
-                .FirstOrDefaultAsync(s => s.Id == id);
-                
-            if (section != null)
+            var result = await _sectionService.DeleteSectionAsync(id);
+            
+            if (!result.success)
             {
-                // Check if section has students or activity templates
-                if (section.Students.Any() || section.ActivityTemplates.Any())
-                {
-                    TempData["ErrorMessage"] = "Cannot delete section that contains students or activity templates. Please move or delete them first.";
-                    return RedirectToAction(nameof(Delete), new { id });
-                }
-
-                _context.Sections.Remove(section);
-                await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = $"Section '{section.Name}' deleted successfully!";
+                TempData["ErrorMessage"] = result.message;
+                return RedirectToAction(nameof(Delete), new { id });
             }
-            return RedirectToAction(nameof(Index));
-        }
 
-        private bool SectionExists(int id)
-        {
-            return _context.Sections.Any(e => e.Id == id);
+            TempData["SuccessMessage"] = result.message;
+            return RedirectToAction(nameof(Index));
         }
     }
 }

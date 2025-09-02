@@ -1,4 +1,4 @@
-﻿using elective_2_gradesheet.Data;
+using elective_2_gradesheet.Data;
 using elective_2_gradesheet.Data.Entities;
 using elective_2_gradesheet.Helpers;
 using elective_2_gradesheet.Models;
@@ -7,27 +7,12 @@ using System.Text.RegularExpressions;
 
 namespace elective_2_gradesheet.Services
 {
-    public interface IGradeService
+    public class GradeDbLiteService : IGradeService
     {
-        Task ProcessAndSaveGradesAsync(CsvDisplayViewModel model);
-        Task<List<Section>> GetActiveSectionsAsync();
-        Task<StudentProfileViewModel> GetStudentProfileAsync(int studentId, GradingPeriod? period, string sortOrder);
-        Task<PaginatedList<StudentActivityGroupViewModel>> GetStudentGroupsAsync(string searchTerm, int? sectionId, GradingPeriod? period, string sortOrder, int pageIndex, int pageSize);
-        // This new method signature was added
-        Task UpdateActivityAsync(int studentId, double points, double maxPoints, GradingPeriod period, string? tag, string? otherTag, string? githubLink, string? status, int? activityId, string? activityName, int? newId = 0);
-        Task<int> BulkAddMissingActivitiesAsync(int studentId, GradingPeriod gradingPeriod);
-
-        Task<(bool success, string message, int? studentId)> GetNextStudentAsync(int currentStudentId, int? sectionId = null, string activityName = null, bool includeChecked = false);
-
-        Task<(bool success, string message, string rubricJson)> GetActivityTemplateRubricAsync(string activityName);
-    }
-
-    public class GradeDbService : IGradeService
-    {
-        private readonly ApplicationDbContext _context;
+        private readonly ApplicationDbLiteContext _context;
 
         // The database context is injected via the constructor.
-        public GradeDbService(ApplicationDbContext context)
+        public GradeDbLiteService(ApplicationDbLiteContext context)
         {
             _context = context;
         }
@@ -440,121 +425,133 @@ namespace elective_2_gradesheet.Services
             // Group records by activity name to reduce database calls
             var recordsByActivity = records.GroupBy(r => r.ActivityName).ToList();
 
-            foreach (var activityGroup in recordsByActivity)
+            // SQLite optimization: Use a single transaction for all operations
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                var activityName = activityGroup.Key;
-                if (string.IsNullOrEmpty(activityName)) continue;
-
-                // Find or create the activity template for this activity
-                var activityTemplate = await _context.ActivityTemplates
-                    .FirstOrDefaultAsync(at => at.Name == activityName &&
-                                             at.Period == gradingPeriod &&
-                                             at.SectionId == sectionId);
-
-                if (activityTemplate == null)
+                foreach (var activityGroup in recordsByActivity)
                 {
-                    // Create a new activity template
-                    var maxPoints = activityGroup.FirstOrDefault()?.MaxPoints;
-                    var parsedMaxPoints = double.TryParse(maxPoints, out var mp) ? mp : 100.0;
+                    var activityName = activityGroup.Key;
+                    if (string.IsNullOrEmpty(activityName)) continue;
 
-                    activityTemplate = new ActivityTemplate
+                    // Find or create the activity template for this activity
+                    var activityTemplate = await _context.ActivityTemplates
+                        .FirstOrDefaultAsync(at => at.Name == activityName &&
+                                                 at.Period == gradingPeriod &&
+                                                 at.SectionId == sectionId);
+
+                    if (activityTemplate == null)
                     {
-                        Name = activityName,
-                        SectionId = sectionId,
-                        Period = gradingPeriod,
-                        MaxPoints = parsedMaxPoints,
-                        Tag = InferTagFromActivityName(activityName), // Use the smart tagging helper
-                        Description = $"Activity imported from CSV: {activityName}",
-                        RubricJson = null,
-                        IsActive = true
-                    };
-                    _context.ActivityTemplates.Add(activityTemplate);
-                    await _context.SaveChangesAsync(); // Save to get ID
-                }
+                        // Create a new activity template
+                        var maxPoints = activityGroup.FirstOrDefault()?.MaxPoints;
+                        var parsedMaxPoints = double.TryParse(maxPoints, out var mp) ? mp : 100.0;
 
-                // Process each student record for this activity
-                foreach (var record in activityGroup)
-                {
-                    if (string.IsNullOrEmpty(record.Email)) continue;
-
-                    // Find an existing student or create a new one.
-                    var student = await _context.Students
-                        .FirstOrDefaultAsync(s => s.Email == record.Email);
-
-                    if (student == null)
-                    {
-                        student = new Student
+                        activityTemplate = new ActivityTemplate
                         {
-                            LastName = record.LastName,
-                            FirstName = record.FirstName,
-                            Email = record.Email,
-                            SectionId = sectionId
+                            Name = activityName,
+                            SectionId = sectionId,
+                            Period = gradingPeriod,
+                            MaxPoints = parsedMaxPoints,
+                            Tag = InferTagFromActivityName(activityName), // Use the smart tagging helper
+                            Description = $"Activity imported from CSV: {activityName}",
+                            RubricJson = null,
+                            IsActive = true
                         };
-                        _context.Students.Add(student);
+                        _context.ActivityTemplates.Add(activityTemplate);
                         await _context.SaveChangesAsync(); // Save to get ID
                     }
 
-                    // Check if submission already exists
-                    var existingSubmission = await _context.StudentSubmissions
-                        .FirstOrDefaultAsync(ss => ss.StudentId == student.Id &&
-                                                 ss.ActivityTemplateId == activityTemplate.Id);
-
-                    if (existingSubmission != null)
+                    // Process each student record for this activity
+                    foreach (var record in activityGroup)
                     {
-                        // Update existing submission
-                        var points = double.TryParse(record.Points, out var p) ? p : 0;
-                        if (record.Status != "Turned in")
+                        if (string.IsNullOrEmpty(record.Email)) continue;
+
+                        // Find an existing student or create a new one.
+                        var student = await _context.Students
+                            .FirstOrDefaultAsync(s => s.Email == record.Email);
+
+                        if (student == null)
                         {
-                            points = 0;
+                            student = new Student
+                            {
+                                LastName = record.LastName,
+                                FirstName = record.FirstName,
+                                Email = record.Email,
+                                SectionId = sectionId
+                            };
+                            _context.Students.Add(student);
+                            await _context.SaveChangesAsync(); // Save to get ID
                         }
 
-                        existingSubmission.Points = points;
-                        existingSubmission.Status = record.Status;
-                        existingSubmission.UpdatedDate = DateTime.UtcNow;
+                        // Check if submission already exists
+                        var existingSubmission = await _context.StudentSubmissions
+                            .FirstOrDefaultAsync(ss => ss.StudentId == student.Id &&
+                                                     ss.ActivityTemplateId == activityTemplate.Id);
 
-                        if (record.Status == "Turned in" && existingSubmission.SubmissionDate == null)
+                        if (existingSubmission != null)
                         {
-                            existingSubmission.SubmissionDate = DateTime.UtcNow;
+                            // Update existing submission
+                            var points = double.TryParse(record.Points, out var p) ? p : 0;
+                            if (record.Status != "Turned in")
+                            {
+                                points = 0;
+                            }
+
+                            existingSubmission.Points = points;
+                            existingSubmission.Status = record.Status;
+                            existingSubmission.UpdatedDate = DateTime.UtcNow;
+
+                            if (record.Status == "Turned in" && existingSubmission.SubmissionDate == null)
+                            {
+                                existingSubmission.SubmissionDate = DateTime.UtcNow;
+                            }
+                        }
+                        else
+                        {
+                            // Create new submission
+                            var points = double.TryParse(record.Points, out var p) ? p : 0;
+                            if (record.Status != "Turned in")
+                            {
+                                points = 0;
+                            }
+
+                            var submission = new StudentSubmission
+                            {
+                                StudentId = student.Id,
+                                ActivityTemplateId = activityTemplate.Id,
+                                Points = points,
+                                Status = record.Status,
+                                GithubLink = null,
+                                SubmissionDate = record.Status == "Turned in" ? DateTime.UtcNow : null,
+                                GradedDate = null
+                            };
+                            _context.StudentSubmissions.Add(submission);
                         }
                     }
-                    else
-                    {
-                        // Create new submission
-                        var points = double.TryParse(record.Points, out var p) ? p : 0;
-                        if (record.Status != "Turned in")
-                        {
-                            points = 0;
-                        }
 
-                        var submission = new StudentSubmission
-                        {
-                            StudentId = student.Id,
-                            ActivityTemplateId = activityTemplate.Id,
-                            Points = points,
-                            Status = record.Status,
-                            GithubLink = null,
-                            SubmissionDate = record.Status == "Turned in" ? DateTime.UtcNow : null,
-                            GradedDate = null
-                        };
-                        _context.StudentSubmissions.Add(submission);
-                    }
+                    // Save changes for this activity group
+                    await _context.SaveChangesAsync();
                 }
 
-                // Save all changes in a single transaction.
-                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
             }
-
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
+
         public async Task<List<Section>> GetActiveSectionsAsync()
         {
             return await _context.Sections.Where(s => s.IsActive).ToListAsync();
         }
 
         public async Task<(bool success, string message, int? studentId)> GetNextStudentAsync(
-      int currentStudentId,
-      int? sectionId = null,
-      string activityName = null,
-      bool includeChecked = false)
+            int currentStudentId,
+            int? sectionId = null,
+            string activityName = null,
+            bool includeChecked = false)
         {
             try
             {
@@ -625,6 +622,5 @@ namespace elective_2_gradesheet.Services
                 return (false, $"Error finding next student: {ex.Message}", null);
             }
         }
-
     }
 }
