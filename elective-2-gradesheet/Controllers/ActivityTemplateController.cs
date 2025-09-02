@@ -1,5 +1,4 @@
 using System.Text.Json;
-using elective_2_gradesheet.Data;
 using elective_2_gradesheet.Data.Entities;
 using elective_2_gradesheet.Models;
 using elective_2_gradesheet.Services;
@@ -11,10 +10,10 @@ namespace elective_2_gradesheet.Controllers
 {
     public class ActivityTemplateController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly DbContext _context;
         private readonly IActivityTemplateService _activityTemplateService;
 
-        public ActivityTemplateController(ApplicationDbContext context, IActivityTemplateService activityTemplateService)
+        public ActivityTemplateController(DbContext context, IActivityTemplateService activityTemplateService)
         {
             _context = context;
             _activityTemplateService = activityTemplateService;
@@ -28,7 +27,7 @@ namespace elective_2_gradesheet.Controllers
             ViewData["SectionSortParm"] = sortOrder == "Section" ? "section_desc" : "Section";
             ViewData["PeriodSortParm"] = sortOrder == "Period" ? "period_desc" : "Period";
 
-            var query = _context.ActivityTemplates
+            var query = _context.Set<ActivityTemplate>()
                 .Include(at => at.Section)
                 .Where(at => at.IsActive);
 
@@ -77,7 +76,7 @@ namespace elective_2_gradesheet.Controllers
 
             var activityTemplates = await query.ToListAsync();
 
-            var sections = await _context.Sections
+            var sections = await _context.Set<Section>()
                 .Where(s => s.IsActive)
                 .Select(s => new SelectListItem { Value = s.Id.ToString(), Text = s.Name })
                 .ToListAsync();
@@ -103,7 +102,7 @@ namespace elective_2_gradesheet.Controllers
                 return NotFound();
             }
 
-            var activityTemplate = await _context.ActivityTemplates
+            var activityTemplate = await _context.Set<ActivityTemplate>()
                 .Include(at => at.Section)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
@@ -118,7 +117,7 @@ namespace elective_2_gradesheet.Controllers
         // GET: ActivityTemplate/Create
         public async Task<IActionResult> Create()
         {
-            ViewBag.Sections = new SelectList(await _context.Sections.Where(s => s.IsActive).ToListAsync(), "Id", "Name");
+            ViewBag.Sections = new SelectList(await _context.Set<Section>().Where(s => s.IsActive).ToListAsync(), "Id", "Name");
             
             var model = new ActivityTemplateCreateViewModel
             {
@@ -161,7 +160,7 @@ namespace elective_2_gradesheet.Controllers
                         if (!validationResult.IsValid)
                         {
                             ModelState.AddModelError("RubricJson", validationResult.ErrorMessage);
-                            ViewBag.Sections = new SelectList(await _context.Sections.Where(s => s.IsActive).ToListAsync(), "Id", "Name", model.SectionId);
+                            ViewBag.Sections = new SelectList(await _context.Set<Section>().Where(s => s.IsActive).ToListAsync(), "Id", "Name", model.SectionId);
                             return View(model);
                         }
                     }
@@ -178,7 +177,7 @@ namespace elective_2_gradesheet.Controllers
                 }
             }
 
-            ViewBag.Sections = new SelectList(await _context.Sections.Where(s => s.IsActive).ToListAsync(), "Id", "Name", model.SectionId);
+            ViewBag.Sections = new SelectList(await _context.Set<Section>().Where(s => s.IsActive).ToListAsync(), "Id", "Name", model.SectionId);
             return View(model);
         }
 
@@ -190,7 +189,7 @@ namespace elective_2_gradesheet.Controllers
                 return NotFound();
             }
 
-            var activityTemplate = await _context.ActivityTemplates.FindAsync(id);
+            var activityTemplate = await _context.Set<ActivityTemplate>().FindAsync(id);
             if (activityTemplate == null)
             {
                 return NotFound();
@@ -210,7 +209,7 @@ namespace elective_2_gradesheet.Controllers
                 CreatedDate = activityTemplate.CreatedDate
             };
 
-            ViewBag.Sections = new SelectList(await _context.Sections.Where(s => s.IsActive).ToListAsync(), "Id", "Name", activityTemplate.SectionId);
+            ViewBag.Sections = new SelectList(await _context.Set<Section>().Where(s => s.IsActive).ToListAsync(), "Id", "Name", activityTemplate.SectionId);
             return View(model);
         }
 
@@ -228,7 +227,7 @@ namespace elective_2_gradesheet.Controllers
             {
                 try
                 {
-                    var activityTemplate = await _context.ActivityTemplates.FindAsync(id);
+                    var activityTemplate = await _context.Set<ActivityTemplate>().FindAsync(id);
                     if (activityTemplate == null)
                     {
                         return NotFound();
@@ -241,7 +240,7 @@ namespace elective_2_gradesheet.Controllers
                         if (!validationResult.IsValid)
                         {
                             ModelState.AddModelError("RubricJson", validationResult.ErrorMessage);
-                            ViewBag.Sections = new SelectList(await _context.Sections.Where(s => s.IsActive).ToListAsync(), "Id", "Name", model.SectionId);
+                            ViewBag.Sections = new SelectList(await _context.Set<Section>().Where(s => s.IsActive).ToListAsync(), "Id", "Name", model.SectionId);
                             return View(model);
                         }
                     }
@@ -279,7 +278,7 @@ namespace elective_2_gradesheet.Controllers
                 }
             }
 
-            ViewBag.Sections = new SelectList(await _context.Sections.Where(s => s.IsActive).ToListAsync(), "Id", "Name", model.SectionId);
+            ViewBag.Sections = new SelectList(await _context.Set<Section>().Where(s => s.IsActive).ToListAsync(), "Id", "Name", model.SectionId);
             return View(model);
         }
 
@@ -291,7 +290,7 @@ namespace elective_2_gradesheet.Controllers
                 return NotFound();
             }
 
-            var activityTemplate = await _context.ActivityTemplates
+            var activityTemplate = await _context.Set<ActivityTemplate>()
                 .Include(at => at.Section)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
@@ -308,7 +307,7 @@ namespace elective_2_gradesheet.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var activityTemplate = await _context.ActivityTemplates.FindAsync(id);
+            var activityTemplate = await _context.Set<ActivityTemplate>().FindAsync(id);
             if (activityTemplate != null)
             {
                 // Soft delete - mark as inactive instead of deleting
@@ -328,7 +327,7 @@ namespace elective_2_gradesheet.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Duplicate(int id)
         {
-            var originalTemplate = await _context.ActivityTemplates.FindAsync(id);
+            var originalTemplate = await _context.Set<ActivityTemplate>().FindAsync(id);
             if (originalTemplate == null)
             {
                 return NotFound();
@@ -363,7 +362,7 @@ namespace elective_2_gradesheet.Controllers
                 return NotFound();
             }
 
-            var activityTemplate = await _context.ActivityTemplates
+            var activityTemplate = await _context.Set<ActivityTemplate>()
                 .Include(at => at.Section)
                 .FirstOrDefaultAsync(m => m.Id == id);
 
@@ -389,7 +388,7 @@ namespace elective_2_gradesheet.Controllers
         {
             if (ModelState.IsValid)
             {
-                var activityTemplate = await _context.ActivityTemplates.FindAsync(model.ActivityTemplateId);
+                var activityTemplate = await _context.Set<ActivityTemplate>().FindAsync(model.ActivityTemplateId);
                 if (activityTemplate == null)
                 {
                     return NotFound();
@@ -440,7 +439,7 @@ namespace elective_2_gradesheet.Controllers
 
         private bool ActivityTemplateExists(int id)
         {
-            return _context.ActivityTemplates.Any(e => e.Id == id);
+            return _context.Set<ActivityTemplate>().Any(e => e.Id == id);
         }
     }
 
