@@ -332,9 +332,10 @@ namespace elective_2_gradesheet.Services
                     return; // Cannot process without activity name
                 }
 
-                // First, try to find the activity template
+                // First, try to find the activity template (case-insensitive, trimmed comparison)
+                var normalizedActivityName = activityName.Trim();
                 activityTemplate = await _context.ActivityTemplates
-                    .FirstOrDefaultAsync(at => at.Name == activityName &&
+                    .FirstOrDefaultAsync(at => at.Name.Trim().ToLower() == normalizedActivityName.ToLower() &&
                                              at.Period == period &&
                                              at.SectionId == student.SectionId);
 

@@ -317,15 +317,19 @@ namespace elective_2_gradesheet.Services
                     return; // Cannot process without activity name
                 }
 
-                // First, try to find the activity template
+                // First, try to find the activity template (case-insensitive, trimmed comparison)
+                var normalizedActivityName = activityName.Trim();
+                Console.WriteLine($"[DEBUG SQLite] Searching for ActivityTemplate: '{normalizedActivityName}', Period: {period}, SectionId: {student.SectionId}");
+                
                 activityTemplate = await _context.ActivityTemplates
-                    .FirstOrDefaultAsync(at => at.Name == activityName &&
+                    .FirstOrDefaultAsync(at => at.Name.Trim().ToLower() == normalizedActivityName.ToLower() &&
                                              at.Period == period &&
                                              at.SectionId == student.SectionId);
 
                 if (activityTemplate == null)
                 {
                     // Create a new activity template
+                    Console.WriteLine($"[DEBUG SQLite] No existing ActivityTemplate found. Creating new one for '{activityName}'");
                     activityTemplate = new ActivityTemplate
                     {
                         Name = activityName,
@@ -339,6 +343,11 @@ namespace elective_2_gradesheet.Services
                     };
                     _context.ActivityTemplates.Add(activityTemplate);
                     await _context.SaveChangesAsync(); // Save to get the ID
+                    Console.WriteLine($"[DEBUG SQLite] Created new ActivityTemplate with ID: {activityTemplate.Id}");
+                }
+                else
+                {
+                    Console.WriteLine($"[DEBUG SQLite] Found existing ActivityTemplate with ID: {activityTemplate.Id}, Name: '{activityTemplate.Name}'");
                 }
 
                 // Now check if a StudentSubmission already exists for this student and template

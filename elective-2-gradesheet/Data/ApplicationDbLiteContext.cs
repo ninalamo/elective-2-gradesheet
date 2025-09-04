@@ -55,8 +55,11 @@ namespace elective_2_gradesheet.Data
                     .HasForeignKey(at => at.SectionId)
                     .OnDelete(DeleteBehavior.Cascade);
                     
-                // Index for common queries
-                entity.HasIndex(at => new { at.SectionId, at.Period, at.Name });
+                // Unique composite index to prevent duplicate activity templates
+                entity.HasIndex(at => new { at.SectionId, at.Period, at.Name }).IsUnique();
+                
+                // Additional index for common queries (keeping the original for performance)
+                entity.HasIndex(at => new { at.SectionId, at.Period });
             });
 
             // SQLite doesn't have native enum support, so we configure it as string

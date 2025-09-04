@@ -34,6 +34,11 @@ namespace elective_2_gradesheet.Data
                 .WithMany(at => at.StudentSubmissions)
                 .HasForeignKey(ss => ss.ActivityTemplateId)
                 .OnDelete(DeleteBehavior.NoAction);
+
+            // Add unique constraint on ActivityTemplate to prevent duplicates
+            modelBuilder.Entity<ActivityTemplate>()
+                .HasIndex(at => new { at.SectionId, at.Period, at.Name })
+                .IsUnique();
         }
     }
 }
