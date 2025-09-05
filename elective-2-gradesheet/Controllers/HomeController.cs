@@ -597,7 +597,12 @@ namespace elective_2_gradesheet.Controllers
         [HttpGet]
         public async Task<IActionResult> BulkGrading(int? activityTemplateId = null, int? sectionId = null, bool showNonZeroGrades = false)
         {
-            var viewModel = new BulkGradingViewModel();
+            var viewModel = new BulkGradingViewModel
+            {
+                SectionId = sectionId,
+                ActivityTemplateId = activityTemplateId,
+                ShowNonZeroGrades = showNonZeroGrades
+            };
             
             // Load sections
             var sections = await _gradeService.GetActiveSectionsAsync();
@@ -608,17 +613,17 @@ namespace elective_2_gradesheet.Controllers
                 Selected = s.Id == sectionId
             }).ToList();
             
-            // If we have both parameters, initialize the view model with student data
-            if (activityTemplateId.HasValue && sectionId.HasValue)
+            // Load activity templates if section is selected
+            if (sectionId.HasValue)
             {
                 try
                 {
-                    viewModel = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, showNonZeroGrades);
-                    viewModel.Sections = sections.Select(s => new SelectListItem 
-                    { 
-                        Value = s.Id.ToString(), 
-                        Text = s.Name,
-                        Selected = s.Id == sectionId
+                    var activityTemplates = await _gradeService.GetActivityTemplatesBySectionAsync(sectionId.Value);
+                    viewModel.ActivityTemplates = activityTemplates.Select(at => new SelectListItem
+                    {
+                        Value = at.Id.ToString(),
+                        Text = $"{at.Name} ({at.Period}) - {at.MaxPoints}pts",
+                        Selected = at.Id == activityTemplateId
                     }).ToList();
                 }
                 catch (Exception ex)
@@ -627,7 +632,71 @@ namespace elective_2_gradesheet.Controllers
                 }
             }
             
+            // Load students if both section and activity are selected
+            if (activityTemplateId.HasValue && sectionId.HasValue)
+            {
+                try
+                {
+                    var bulkGradingData = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, showNonZeroGrades);
+                    viewModel.Students = bulkGradingData.Students;
+                    viewModel.ActivityTemplateName = bulkGradingData.ActivityTemplateName;
+                }
+                catch (Exception ex)
+                {
+                    TempData["ErrorMessage"] = ex.Message;
+                }
+            }
+            
             return View(viewModel);
+        }
+        
+        [HttpPost]
+        public async Task<IActionResult> ProcessBulkGrading(BulkGradingFormModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                TempData["ErrorMessage"] = "Invalid form data.";
+                return RedirectToAction("BulkGrading", new { activityTemplateId = model.ActivityTemplateId, sectionId = model.SectionId });
+            }
+            
+            var selectedStudents = model.SelectedStudents?.Where(s => s.IsSelected && !string.IsNullOrWhiteSpace(s.RepositoryUrl)).ToList();
+            
+            if (selectedStudents?.Any() != true)
+            {
+                TempData["ErrorMessage"] = "No students selected or no valid repository URLs provided.";
+                return RedirectToAction("BulkGrading", new { activityTemplateId = model.ActivityTemplateId, sectionId = model.SectionId });
+            }
+            
+            try
+            {
+                // Convert to the format expected by the service
+                var bulkProcessingStudents = selectedStudents.Select(s => new BulkProcessingStudent
+                {
+                    StudentId = s.StudentId,
+                    RepositoryUrl = s.RepositoryUrl
+                }).ToList();
+                
+                // Save repository URLs first
+                await _gradeService.SaveRepositoryUrlsAsync(model.ActivityTemplateId, bulkProcessingStudents);
+                
+                // Start bulk processing
+                var sessionId = await _gradeService.StartBulkProcessingAsync(
+                    model.ActivityTemplateId, 
+                    model.SectionId, 
+                    bulkProcessingStudents.Select(s => s.StudentId).ToList(), 
+                    false);
+                
+                TempData["SuccessMessage"] = $"Bulk processing started for {bulkProcessingStudents.Count} students. Session ID: {sessionId}";
+                
+                // For now, redirect back to the bulk grading page
+                // In a full implementation, you might redirect to a progress page
+                return RedirectToAction("BulkGrading", new { activityTemplateId = model.ActivityTemplateId, sectionId = model.SectionId });
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error starting bulk processing: {ex.Message}";
+                return RedirectToAction("BulkGrading", new { activityTemplateId = model.ActivityTemplateId, sectionId = model.SectionId });
+            }
         }
 
         [HttpGet]

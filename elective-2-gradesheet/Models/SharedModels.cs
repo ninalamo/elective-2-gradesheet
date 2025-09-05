@@ -84,15 +84,25 @@ public class GetActivityTemplateRubricRequest
 // Enhanced Bulk Grading Request Models
 public class BulkProcessingStudent
 {
+    [JsonPropertyName("studentId")]
     public int StudentId { get; set; }
+    
+    [JsonPropertyName("repositoryUrl")]
     public string RepositoryUrl { get; set; } = string.Empty;
 }
 
 public class StartBulkProcessingRequest
 {
+    [JsonPropertyName("activityTemplateId")]
     public int ActivityTemplateId { get; set; }
+    
+    [JsonPropertyName("sectionId")]
     public int SectionId { get; set; }
+    
+    [JsonPropertyName("selectedStudents")]
     public List<BulkProcessingStudent> SelectedStudents { get; set; } = [];
+    
+    [JsonPropertyName("showNonZeroGrades")]
     public bool ShowNonZeroGrades { get; set; }
 }
 

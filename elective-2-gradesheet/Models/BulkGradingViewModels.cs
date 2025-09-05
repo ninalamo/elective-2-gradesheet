@@ -1,5 +1,6 @@
 using elective_2_gradesheet.Data.Entities;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Text.Json.Serialization;
 
 namespace elective_2_gradesheet.Models
 {
@@ -16,16 +17,37 @@ namespace elective_2_gradesheet.Models
 
     public class BulkGradingStudentViewModel
     {
+        [JsonPropertyName("studentId")]
         public int StudentId { get; set; }
+        
+        [JsonPropertyName("studentName")]
         public string StudentName { get; set; } = string.Empty;
+        
+        [JsonPropertyName("repositoryUrl")]
         public string? RepositoryUrl { get; set; }
+        
+        [JsonPropertyName("currentPoints")]
         public double? CurrentPoints { get; set; }
+        
+        [JsonPropertyName("currentStatus")]
         public string? CurrentStatus { get; set; }
+        
+        [JsonPropertyName("hasExistingSubmission")]
         public bool HasExistingSubmission { get; set; }
+        
+        [JsonPropertyName("submissionId")]
         public int? SubmissionId { get; set; }
+        
+        [JsonPropertyName("hasNonZeroGrade")]
         public bool HasNonZeroGrade { get; set; }
+        
+        [JsonPropertyName("hasTurnedIn")]
         public bool HasTurnedIn { get; set; }
+        
+        [JsonPropertyName("isSelected")]
         public bool IsSelected { get; set; }
+        
+        [JsonPropertyName("isVisible")]
         public bool IsVisible { get; set; }
     }
 
@@ -122,5 +144,20 @@ namespace elective_2_gradesheet.Models
         Saving,
         Completed,
         Failed
+    }
+    
+    // MVC Form Models
+    public class BulkGradingFormModel
+    {
+        public int ActivityTemplateId { get; set; }
+        public int SectionId { get; set; }
+        public List<BulkGradingStudentFormModel> SelectedStudents { get; set; } = [];
+    }
+    
+    public class BulkGradingStudentFormModel
+    {
+        public int StudentId { get; set; }
+        public bool IsSelected { get; set; }
+        public string RepositoryUrl { get; set; } = string.Empty;
     }
 }
