@@ -89,13 +89,15 @@ namespace elective_2_gradesheet.Models
     public class RubricEditorViewModel
     {
         public int ActivityTemplateId { get; set; }
-        
-        [Display(Name = "Activity Template")]
         public string ActivityTemplateName { get; set; } = string.Empty;
-        
-        [Required]
-        [Display(Name = "Rubric JSON")]
-        public string RubricJson { get; set; } = "[]";
+        public string RubricJson { get; set; } = string.Empty;
+    }
+
+    public class ProjectUploaderViewModel
+    {
+        public int ActivityTemplateId { get; set; }
+        public string ActivityTemplateName { get; set; } = string.Empty;
+        public string? CurrentRubricJson { get; set; }
     }
 
     public class RubricItemViewModel

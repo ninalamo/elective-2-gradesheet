@@ -11,6 +11,9 @@ DatabaseConfiguration.ConfigureServices(builder.Services, builder.Configuration)
 builder.Services.AddScoped<ICsvParsingService, CsvParsingService>(); 
 builder.Services.AddScoped<IGitService, GitService>();
 builder.Services.AddScoped<IActivityTemplateService, ActivityTemplateService>();
+builder.Services.AddScoped<IRubricGenerationService, RubricGenerationService>();
+builder.Services.AddScoped<RepositoryService>();
+builder.Services.AddScoped<RubricScoringService>();
 
 
 var app = builder.Build();

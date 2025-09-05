@@ -1,9 +1,12 @@
-﻿using elective_2_gradesheet.Data;
+using elective_2_gradesheet.Data;
 using elective_2_gradesheet.Data.Entities;
 using elective_2_gradesheet.Helpers;
 using elective_2_gradesheet.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using System.Text.Json;
+using elective_2_gradesheet.Controllers;
+using System.Collections.Concurrent;
 
 namespace elective_2_gradesheet.Services
 {
@@ -20,16 +23,38 @@ namespace elective_2_gradesheet.Services
         Task<(bool success, string message, int? studentId)> GetNextStudentAsync(int currentStudentId, int? sectionId = null, string activityName = null, bool includeChecked = false);
 
         Task<(bool success, string message, string rubricJson)> GetActivityTemplateRubricAsync(string activityName);
+        
+        // Bulk grading methods
+        Task<List<Student>> GetStudentsBySectionAsync(int sectionId);
+        Task<List<ActivityTemplate>> GetActivityTemplatesBySectionAsync(int sectionId);
+        Task<(bool success, string message, List<BulkGradingResult> results)> ProcessBulkGradingAsync(BulkGradingRequest request);
+        
+        // Enhanced bulk grading methods
+        Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, bool showNonZeroGrades = false);
+        Task<string> StartBulkProcessingAsync(int activityTemplateId, int sectionId, List<int> selectedStudentIds, bool showNonZeroGrades);
+        BulkGradingProgressUpdate? GetBulkProcessingProgress(string sessionId);
+        BulkGradingSession? GetBulkProcessingSession(string sessionId);
+        void UpdateBulkApprovalStatus(string sessionId, int studentId, bool isApproved);
+        void BulkApproveAll(string sessionId, bool isApproved);
+        Task<bool> SaveBulkGradingResultsAsync(string sessionId);
+        void CleanupBulkGradingSession(string sessionId);
+        Task SaveRepositoryUrlsAsync(int activityTemplateId, List<BulkProcessingStudent> students);
     }
 
     public class GradeDbService : IGradeService
     {
         private readonly ApplicationDbContext _context;
+        private readonly RepositoryService _repositoryService;
+        private readonly RubricScoringService _rubricScoringService;
+        private readonly ConcurrentDictionary<string, BulkGradingSession> _sessions = new();
+        private readonly ConcurrentDictionary<string, BulkGradingProgressUpdate> _progressUpdates = new();
 
         // The database context is injected via the constructor.
-        public GradeDbService(ApplicationDbContext context)
+        public GradeDbService(ApplicationDbContext context, RepositoryService repositoryService, RubricScoringService rubricScoringService)
         {
             _context = context;
+            _repositoryService = repositoryService;
+            _rubricScoringService = rubricScoringService;
         }
 
         public async Task<(bool success, string message, string rubricJson)> GetActivityTemplateRubricAsync(string activityName)
@@ -627,5 +652,451 @@ namespace elective_2_gradesheet.Services
             }
         }
 
+        // Bulk grading methods implementation (same as SQLite version)
+        public async Task<List<Student>> GetStudentsBySectionAsync(int sectionId)
+        {
+            return await _context.Students
+                .Where(s => s.SectionId == sectionId)
+                .OrderBy(s => s.LastName)
+                .ThenBy(s => s.FirstName)
+                .ToListAsync();
+        }
+
+        public async Task<List<ActivityTemplate>> GetActivityTemplatesBySectionAsync(int sectionId)
+        {
+            return await _context.ActivityTemplates
+                .Where(at => at.SectionId == sectionId && at.IsActive)
+                .OrderBy(at => at.Period)
+                .ThenBy(at => at.Name)
+                .ToListAsync();
+        }
+
+        public async Task<(bool success, string message, List<BulkGradingResult> results)> ProcessBulkGradingAsync(BulkGradingRequest request)
+        {
+            var results = new List<BulkGradingResult>();
+            
+            try
+            {
+                // Get the activity template with rubric
+                var activityTemplate = await _context.ActivityTemplates
+                    .FirstOrDefaultAsync(at => at.Id == request.ActivityTemplateId && at.IsActive);
+                    
+                if (activityTemplate == null)
+                {
+                    return (false, "Activity template not found.", results);
+                }
+
+                // Parse the rubric if available
+                List<RubricItem>? rubric = null;
+                if (!string.IsNullOrEmpty(activityTemplate.RubricJson))
+                {
+                    try
+                    {
+                        rubric = JsonSerializer.Deserialize<List<RubricItem>>(activityTemplate.RubricJson, 
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    }
+                    catch (JsonException)
+                    {
+                        // Continue without rubric if it's invalid
+                        rubric = null;
+                    }
+                }
+
+                // Process each student submission
+                foreach (var submission in request.Submissions)
+                {
+                    var result = new BulkGradingResult
+                    {
+                        StudentId = submission.StudentId
+                    };
+
+                    try
+                    {
+                        // Get student info
+                        var student = await _context.Students.FindAsync(submission.StudentId);
+                        if (student == null)
+                        {
+                            result.Success = false;
+                            result.Message = "Student not found";
+                            results.Add(result);
+                            continue;
+                        }
+                        result.StudentName = student.GetFullName();
+
+                        // Check for existing submission
+                        var existingSubmission = await _context.StudentSubmissions
+                            .FirstOrDefaultAsync(ss => ss.StudentId == submission.StudentId && 
+                                               ss.ActivityTemplateId == request.ActivityTemplateId);
+
+                        // Skip if already has non-zero grades (as per requirements)
+                        if (existingSubmission != null && existingSubmission.Points > 0)
+                        {
+                            result.Success = false;
+                            result.Message = "Student already has non-zero grade. Skipped.";
+                            result.Points = existingSubmission.Points;
+                            result.Status = existingSubmission.Status;
+                            results.Add(result);
+                            continue;
+                        }
+
+                        // Determine status and points based on GitHub link
+                        string status;
+                        double points = 0;
+                        var scoringDetails = new List<string>();
+                        
+                        if (string.IsNullOrWhiteSpace(submission.GitHubLink))
+                        {
+                            status = "Not Turned In";
+                            result.Message = "No GitHub repository provided";
+                        }
+                        else
+                        {
+                            status = "Turned In";
+                            result.Message = "GitHub repository submitted";
+                            
+                            // If rubric is available, we could potentially score it here
+                            // For now, we'll just mark it as submitted with 0 points
+                            // The actual scoring would happen when the repository is cloned and analyzed
+                            if (rubric != null)
+                            {
+                                // Note: For full implementation, you'd want to clone the repo and score it
+                                // For now, we'll just award partial points for having a GitHub link
+                                points = Math.Min(activityTemplate.MaxPoints * 0.1, 5); // 10% or 5 points, whichever is smaller
+                                result.Message += " (Partial credit for submission - requires manual scoring)";
+                                scoringDetails.Add($"GitHub link provided: {submission.GitHubLink}");
+                                scoringDetails.Add("Repository content analysis pending");
+                            }
+                        }
+
+                        // Create or update the student submission
+                        if (existingSubmission != null)
+                        {
+                            // Update existing submission
+                            existingSubmission.Status = status;
+                            existingSubmission.GithubLink = submission.GitHubLink;
+                            existingSubmission.Points = points;
+                            existingSubmission.UpdatedDate = DateTime.UtcNow;
+                            
+                            if (status == "Turned In" && existingSubmission.SubmissionDate == null)
+                            {
+                                existingSubmission.SubmissionDate = DateTime.UtcNow;
+                            }
+                        }
+                        else
+                        {
+                            // Create new submission
+                            var newSubmission = new StudentSubmission
+                            {
+                                StudentId = submission.StudentId,
+                                ActivityTemplateId = request.ActivityTemplateId,
+                                Points = points,
+                                Status = status,
+                                GithubLink = submission.GitHubLink,
+                                SubmissionDate = status == "Turned In" ? DateTime.UtcNow : null,
+                                GradedDate = null
+                            };
+                            _context.StudentSubmissions.Add(newSubmission);
+                        }
+
+                        result.Success = true;
+                        result.Points = points;
+                        result.Status = status;
+                        result.ScoringDetails = scoringDetails;
+                    }
+                    catch (Exception ex)
+                    {
+                        result.Success = false;
+                        result.Message = $"Error processing student: {ex.Message}";
+                    }
+                    
+                    results.Add(result);
+                }
+
+                // Save all changes
+                await _context.SaveChangesAsync();
+                
+                var successCount = results.Count(r => r.Success);
+                var message = $"Processed {successCount} out of {results.Count} students successfully.";
+                
+                return (true, message, results);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error during bulk processing: {ex.Message}", results);
+            }
+        }
+
+        // Enhanced bulk grading methods (SQL Server implementation)
+        public async Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, bool showNonZeroGrades = false)
+        {
+            var activityTemplate = await _context.ActivityTemplates
+                .FirstOrDefaultAsync(at => at.Id == activityTemplateId);
+
+            if (activityTemplate == null)
+                throw new ArgumentException($"Activity template with ID {activityTemplateId} not found");
+
+            var students = await _context.Students
+                .Where(s => s.SectionId == sectionId)
+                .OrderBy(s => s.LastName)
+                .ThenBy(s => s.FirstName)
+                .ToListAsync();
+
+            var existingSubmissions = await _context.StudentSubmissions
+                .Where(ss => ss.ActivityTemplateId == activityTemplateId && 
+                            students.Select(s => s.Id).Contains(ss.StudentId))
+                .ToListAsync();
+
+            var studentViewModels = students.Select(student =>
+            {
+                var existingSubmission = existingSubmissions.FirstOrDefault(es => es.StudentId == student.Id);
+                var hasNonZeroGrade = existingSubmission?.Points > 0;
+                var hasTurnedIn = existingSubmission?.Status == "Turned In";
+
+                return new BulkGradingStudentViewModel
+                {
+                    StudentId = student.Id,
+                    StudentName = $"{student.LastName}, {student.FirstName}",
+                    RepositoryUrl = existingSubmission?.GithubLink,
+                    CurrentPoints = existingSubmission?.Points,
+                    CurrentStatus = existingSubmission?.Status,
+                    HasExistingSubmission = existingSubmission != null,
+                    SubmissionId = existingSubmission?.Id,
+                    HasNonZeroGrade = hasNonZeroGrade,
+                    HasTurnedIn = hasTurnedIn,
+                    IsSelected = !(hasNonZeroGrade && hasTurnedIn),
+                    IsVisible = showNonZeroGrades || !hasNonZeroGrade
+                };
+            }).ToList();
+
+            return new BulkGradingViewModel
+            {
+                ActivityTemplateId = activityTemplateId,
+                ActivityTemplateName = activityTemplate.Name,
+                SectionId = sectionId,
+                Students = studentViewModels,
+                ShowNonZeroGrades = showNonZeroGrades
+            };
+        }
+
+        public async Task<string> StartBulkProcessingAsync(int activityTemplateId, int sectionId, List<int> selectedStudentIds, bool showNonZeroGrades)
+        {
+            var sessionId = Guid.NewGuid().ToString();
+            
+            var session = new BulkGradingSession
+            {
+                SessionId = sessionId,
+                ActivityTemplateId = activityTemplateId,
+                SectionId = sectionId,
+                ShowNonZeroGrades = showNonZeroGrades,
+                Status = BulkGradingStatus.Processing
+            };
+
+            _sessions[sessionId] = session;
+            _ = Task.Run(() => ProcessStudentsAsync(sessionId, selectedStudentIds));
+            return sessionId;
+        }
+
+        private async Task ProcessStudentsAsync(string sessionId, List<int> selectedStudentIds)
+        {
+            // Implementation similar to GradeDbLiteService but using ApplicationDbContext
+            var session = _sessions[sessionId];
+            var progressUpdate = new BulkGradingProgressUpdate { TotalCount = selectedStudentIds.Count, ProcessedCount = 0 };
+
+            try
+            {
+                var activityTemplate = await _context.ActivityTemplates.FirstOrDefaultAsync(at => at.Id == session.ActivityTemplateId);
+                if (activityTemplate?.RubricJson == null) throw new InvalidOperationException("Activity template must have a rubric defined");
+
+                var rubric = JsonSerializer.Deserialize<List<RubricItem>>(activityTemplate.RubricJson);
+                var students = await _context.Students.Where(s => selectedStudentIds.Contains(s.Id)).ToListAsync();
+                var existingSubmissions = await _context.StudentSubmissions.Where(ss => ss.ActivityTemplateId == session.ActivityTemplateId && selectedStudentIds.Contains(ss.StudentId)).ToListAsync();
+
+                var previewItems = new List<BulkGradingPreviewItem>();
+                for (int i = 0; i < students.Count; i++)
+                {
+                    var student = students[i];
+                    var existingSubmission = existingSubmissions.FirstOrDefault(es => es.StudentId == student.Id);
+                    progressUpdate.StudentId = student.Id;
+                    progressUpdate.StudentName = $"{student.LastName}, {student.FirstName}";
+                    progressUpdate.RepositoryUrl = existingSubmission?.GithubLink;
+                    progressUpdate.ProcessedCount = i;
+                    _progressUpdates[sessionId] = progressUpdate;
+
+                    try
+                    {
+                        var previewItem = await ProcessSingleStudentAsync(student, activityTemplate, rubric!, existingSubmissions, progressUpdate, sessionId);
+                        previewItems.Add(previewItem);
+                    }
+                    catch (Exception ex)
+                    {
+                        previewItems.Add(new BulkGradingPreviewItem
+                        {
+                            StudentId = student.Id,
+                            StudentName = $"{student.LastName}, {student.FirstName}",
+                            RepositoryUrl = existingSubmission?.GithubLink,
+                            NewPoints = 0,
+                            NewStatus = "Error",
+                            ScoringDetails = new List<string> { $"Error: {ex.Message}" },
+                            RequiresApproval = true,
+                            IsApproved = false
+                        });
+                    }
+                }
+                progressUpdate.ProcessedCount = students.Count;
+                progressUpdate.IsComplete = true;
+                _progressUpdates[sessionId] = progressUpdate;
+                session.PreviewItems = previewItems;
+                session.Status = BulkGradingStatus.WaitingForApproval;
+            }
+            catch (Exception ex)
+            {
+                progressUpdate.HasError = true;
+                progressUpdate.ErrorMessage = ex.Message;
+                progressUpdate.IsComplete = true;
+                _progressUpdates[sessionId] = progressUpdate;
+                session.Status = BulkGradingStatus.Failed;
+            }
+        }
+
+        private async Task<BulkGradingPreviewItem> ProcessSingleStudentAsync(Student student, ActivityTemplate activityTemplate, List<RubricItem> rubric, List<StudentSubmission> existingSubmissions, BulkGradingProgressUpdate progressUpdate, string sessionId)
+        {
+            var existingSubmission = existingSubmissions.FirstOrDefault(es => es.StudentId == student.Id);
+            var repositoryUrl = existingSubmission?.GithubLink;
+            if (string.IsNullOrEmpty(repositoryUrl)) throw new InvalidOperationException($"Student {student.LastName}, {student.FirstName} has no repository URL");
+            
+            var cloneResult = await _repositoryService.CloneRepositoryAsync(repositoryUrl, student.Id);
+            if (!cloneResult.Success) throw new InvalidOperationException($"Failed to clone repository: {cloneResult.ErrorMessage}");
+
+            try
+            {
+                var scanResult = await _repositoryService.ScanRepositoryAsync(cloneResult.ClonedDirectory!);
+                if (!scanResult.Success) throw new InvalidOperationException($"Failed to scan repository: {scanResult.ErrorMessage}");
+                
+                var scoringResult = await _rubricScoringService.ScoreSubmissionAsync(rubric, scanResult.ScannedFiles!);
+                return new BulkGradingPreviewItem
+                {
+                    StudentId = student.Id,
+                    StudentName = $"{student.LastName}, {student.FirstName}",
+                    RepositoryUrl = repositoryUrl,
+                    NewPoints = scoringResult.TotalPoints,
+                    NewStatus = scoringResult.TotalPoints > 0 ? "Completed" : "Not Started",
+                    CurrentPoints = existingSubmission?.Points,
+                    CurrentStatus = existingSubmission?.Status,
+                    IsNew = existingSubmission == null,
+                    IsUpdate = existingSubmission != null,
+                    ScoringDetails = scoringResult.ScoringDetails,
+                    RequiresApproval = existingSubmission != null,
+                    IsApproved = existingSubmission == null
+                };
+            }
+            finally
+            {
+                if (!string.IsNullOrEmpty(cloneResult.ClonedDirectory))
+                {
+                    try { Directory.Delete(cloneResult.ClonedDirectory, true); } catch { }
+                }
+            }
+        }
+
+        public BulkGradingProgressUpdate? GetBulkProcessingProgress(string sessionId) => _progressUpdates.TryGetValue(sessionId, out var progress) ? progress : null;
+        public BulkGradingSession? GetBulkProcessingSession(string sessionId) => _sessions.TryGetValue(sessionId, out var session) ? session : null;
+        public void UpdateBulkApprovalStatus(string sessionId, int studentId, bool isApproved)
+        {
+            if (_sessions.TryGetValue(sessionId, out var session))
+            {
+                var item = session.PreviewItems.FirstOrDefault(pi => pi.StudentId == studentId);
+                if (item != null) item.IsApproved = isApproved;
+            }
+        }
+        public void BulkApproveAll(string sessionId, bool isApproved)
+        {
+            if (_sessions.TryGetValue(sessionId, out var session))
+            {
+                foreach (var item in session.PreviewItems.Where(pi => pi.RequiresApproval)) item.IsApproved = isApproved;
+            }
+        }
+        public async Task<bool> SaveBulkGradingResultsAsync(string sessionId)
+        {
+            if (!_sessions.TryGetValue(sessionId, out var session)) return false;
+            session.Status = BulkGradingStatus.Saving;
+            try
+            {
+                var approvedItems = session.PreviewItems.Where(pi => pi.IsApproved).ToList();
+                foreach (var item in approvedItems)
+                {
+                    if (item.IsNew)
+                    {
+                        _context.StudentSubmissions.Add(new StudentSubmission
+                        {
+                            StudentId = item.StudentId,
+                            ActivityTemplateId = session.ActivityTemplateId,
+                            Points = item.NewPoints,
+                            Status = item.NewStatus,
+                            RubricScoreJson = JsonSerializer.Serialize(item.ScoringDetails),
+                            GradedDate = DateTime.UtcNow
+                        });
+                    }
+                    else if (item.IsUpdate)
+                    {
+                        var existingSubmission = await _context.StudentSubmissions.FirstOrDefaultAsync(ss => ss.StudentId == item.StudentId && ss.ActivityTemplateId == session.ActivityTemplateId);
+                        if (existingSubmission != null)
+                        {
+                            existingSubmission.Points = item.NewPoints;
+                            existingSubmission.Status = item.NewStatus;
+                            existingSubmission.RubricScoreJson = JsonSerializer.Serialize(item.ScoringDetails);
+                            existingSubmission.GradedDate = DateTime.UtcNow;
+                        }
+                    }
+                }
+                await _context.SaveChangesAsync();
+                session.Status = BulkGradingStatus.Completed;
+                return true;
+            }
+            catch
+            {
+                session.Status = BulkGradingStatus.Failed;
+                return false;
+            }
+        }
+        
+        public void CleanupBulkGradingSession(string sessionId)
+        {
+            _sessions.TryRemove(sessionId, out _);
+            _progressUpdates.TryRemove(sessionId, out _);
+        }
+        
+        public async Task SaveRepositoryUrlsAsync(int activityTemplateId, List<BulkProcessingStudent> students)
+        {
+            foreach (var student in students)
+            {
+                // Find or create student submission for this activity
+                var existingSubmission = await _context.StudentSubmissions
+                    .FirstOrDefaultAsync(ss => ss.StudentId == student.StudentId && 
+                                             ss.ActivityTemplateId == activityTemplateId);
+                
+                if (existingSubmission != null)
+                {
+                    // Update existing submission with repository URL
+                    existingSubmission.GithubLink = student.RepositoryUrl;
+                    existingSubmission.UpdatedDate = DateTime.UtcNow;
+                }
+                else
+                {
+                    // Create new submission with repository URL
+                    var newSubmission = new StudentSubmission
+                    {
+                        StudentId = student.StudentId,
+                        ActivityTemplateId = activityTemplateId,
+                        GithubLink = student.RepositoryUrl,
+                        Status = "Not Started",
+                        Points = 0,
+                        CreatedDate = DateTime.UtcNow
+                    };
+                    _context.StudentSubmissions.Add(newSubmission);
+                }
+            }
+            
+            await _context.SaveChangesAsync();
+        }
     }
 }

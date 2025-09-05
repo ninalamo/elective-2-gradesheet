@@ -51,7 +51,7 @@ namespace elective_2_gradesheet.Data
             modelBuilder.Entity<ActivityTemplate>(entity =>
             {
                 entity.HasOne(at => at.Section)
-                    .WithMany()
+                    .WithMany(s => s.ActivityTemplates)
                     .HasForeignKey(at => at.SectionId)
                     .OnDelete(DeleteBehavior.Cascade);
                     

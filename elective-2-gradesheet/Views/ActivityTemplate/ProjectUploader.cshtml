@@ -1,0 +1,334 @@
+@model elective_2_gradesheet.Models.ProjectUploaderViewModel
+
+@{
+    ViewData["Title"] = "Generate Rubric from Project";
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-upload"></i> Generate Rubric from Project</h2>
+                    <p class="text-muted">Activity Template: <strong>@Model.ActivityTemplateName</strong></p>
+                </div>
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Templates
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0"><i class="fas fa-cloud-upload-alt"></i> Upload Project</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong>Upload Instructions:</strong>
+                <ul class="mb-0 mt-2">
+                    <li>Upload a ZIP file containing your project, or individual source files</li>
+                    <li>Supported file types: .zip, .cs, .js, .ts, .java, .py, .html, .cshtml</li>
+                    <li>The system will analyze your code and automatically generate a rubric based on detected patterns</li>
+                    <li>You can edit and customize the generated rubric before saving</li>
+                </ul>
+            </div>
+
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label for="projectFile" class="form-label">Project File</label>
+                            <input type="file" class="form-control" id="projectFile" name="projectFile" 
+                                   accept=".zip,.cs,.js,.ts,.java,.py,.html,.cshtml" required>
+                            <div class="form-text">Choose a ZIP file or individual source files</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" id="uploadBtn" class="btn btn-primary">
+                                    <i class="fas fa-magic"></i> Generate Rubric
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Current Rubric Section -->
+    @if (!string.IsNullOrEmpty(Model.CurrentRubricJson))
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0"><i class="fas fa-list-check"></i> Current Rubric</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    This activity template already has a rubric. Generating a new one will replace the existing rubric.
+                </div>
+                <div id="currentRubricPreview">
+                    <pre class="bg-light p-3 rounded"><code>@Model.CurrentRubricJson</code></pre>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Generated Rubric Section -->
+    <div id="generatedRubricSection" class="card" style="display: none;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="card-title mb-0"><i class="fas fa-cogs"></i> Generated Rubric</h5>
+            <div>
+                <button type="button" id="editRubricBtn" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-edit"></i> Edit Rubric
+                </button>
+                <button type="button" id="saveRubricBtn" class="btn btn-success btn-sm">
+                    <i class="fas fa-save"></i> Save to Activity
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="generationMessage" class="alert"></div>
+            
+            <!-- Rubric JSON Editor -->
+            <div id="rubricEditor" style="display: none;">
+                <div class="mb-3">
+                    <label for="rubricJsonTextarea" class="form-label">Rubric JSON</label>
+                    <textarea id="rubricJsonTextarea" class="form-control font-monospace" rows="15"></textarea>
+                    <div class="form-text">Edit the rubric JSON. Ensure it remains valid JSON format.</div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" id="validateRubricBtn" class="btn btn-outline-info">
+                        <i class="fas fa-check"></i> Validate JSON
+                    </button>
+                    <button type="button" id="cancelEditBtn" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Rubric Preview -->
+            <div id="rubricPreview">
+                <div id="rubricTable"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" role="status" aria-hidden="true"></div>
+                <div>Analyzing project and generating rubric...</div>
+                <small class="text-muted">This may take a moment</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let generatedRubricJson = '';
+        let isEditing = false;
+
+        $(document).ready(function() {
+            // Upload form submission
+            $('#uploadForm').on('submit', function(e) {
+                e.preventDefault();
+                uploadProject();
+            });
+
+            // Edit rubric button
+            $('#editRubricBtn').on('click', function() {
+                showRubricEditor();
+            });
+
+            // Cancel edit button
+            $('#cancelEditBtn').on('click', function() {
+                hideRubricEditor();
+            });
+
+            // Save rubric button
+            $('#saveRubricBtn').on('click', function() {
+                saveRubricToActivity();
+            });
+
+            // Validate rubric button
+            $('#validateRubricBtn').on('click', function() {
+                validateRubricJson();
+            });
+        });
+
+        function uploadProject() {
+            const fileInput = document.getElementById('projectFile');
+            if (!fileInput.files.length) {
+                alert('Please select a file to upload.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('projectFile', fileInput.files[0]);
+
+            $('#loadingModal').modal('show');
+            $('#uploadBtn').prop('disabled', true);
+
+            $.ajax({
+                url: '@Url.Action("UploadProjectForRubric")',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    $('#loadingModal').modal('hide');
+                    $('#uploadBtn').prop('disabled', false);
+
+                    if (response.success) {
+                        generatedRubricJson = response.rubricJson;
+                        showGeneratedRubric(response);
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function() {
+                    $('#loadingModal').modal('hide');
+                    $('#uploadBtn').prop('disabled', false);
+                    alert('Failed to upload and process the project.');
+                }
+            });
+        }
+
+        function showGeneratedRubric(response) {
+            $('#generationMessage')
+                .removeClass('alert-danger alert-warning')
+                .addClass('alert-success')
+                .html(`<i class="fas fa-check-circle"></i> ${response.message} (${response.rubricItems} criteria)`);
+
+            updateRubricPreview(generatedRubricJson);
+            $('#generatedRubricSection').show();
+        }
+
+        function updateRubricPreview(rubricJson) {
+            try {
+                const rubric = JSON.parse(rubricJson);
+                let html = `
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Criterion</th>
+                                    <th>Points</th>
+                                    <th>Keywords</th>
+                                    <th>Target Files</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                rubric.forEach(item => {
+                    html += `
+                        <tr>
+                            <td><strong>${item.name}</strong></td>
+                            <td><span class="badge bg-primary">${item.points}</span></td>
+                            <td><small>${item.keywords.join(', ')}</small></td>
+                            <td><small>${item.files.join(', ')}</small></td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            Total Points: <strong>${rubric.reduce((sum, item) => sum + item.points, 0)}</strong>
+                        </small>
+                    </div>
+                `;
+
+                $('#rubricTable').html(html);
+            } catch (error) {
+                $('#rubricTable').html(`<div class="alert alert-danger">Error parsing rubric JSON: ${error.message}</div>`);
+            }
+        }
+
+        function showRubricEditor() {
+            $('#rubricJsonTextarea').val(JSON.stringify(JSON.parse(generatedRubricJson), null, 2));
+            $('#rubricPreview').hide();
+            $('#rubricEditor').show();
+            $('#editRubricBtn').hide();
+            isEditing = true;
+        }
+
+        function hideRubricEditor() {
+            $('#rubricPreview').show();
+            $('#rubricEditor').hide();
+            $('#editRubricBtn').show();
+            isEditing = false;
+        }
+
+        function validateRubricJson() {
+            const jsonText = $('#rubricJsonTextarea').val();
+            try {
+                const parsed = JSON.parse(jsonText);
+                if (Array.isArray(parsed)) {
+                    generatedRubricJson = jsonText;
+                    updateRubricPreview(jsonText);
+                    alert('✅ JSON is valid and rubric preview updated!');
+                } else {
+                    alert('❌ JSON must be an array of rubric items');
+                }
+            } catch (error) {
+                alert('❌ Invalid JSON: ' + error.message);
+            }
+        }
+
+        function saveRubricToActivity() {
+            const rubricToSave = isEditing ? $('#rubricJsonTextarea').val() : generatedRubricJson;
+            
+            if (!rubricToSave) {
+                alert('No rubric to save');
+                return;
+            }
+
+            // Validate before saving
+            try {
+                JSON.parse(rubricToSave);
+            } catch (error) {
+                alert('Cannot save: Invalid JSON format');
+                return;
+            }
+
+            const saveData = {
+                ActivityTemplateId: @Model.ActivityTemplateId,
+                RubricJson: rubricToSave
+            };
+
+            $.ajax({
+                url: '@Url.Action("SaveRubric")',
+                type: 'POST',
+                data: saveData,
+                headers: {
+                    'RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                },
+                success: function(response) {
+                    alert('✅ Rubric saved successfully!');
+                    window.location.href = '@Url.Action("Index")';
+                },
+                error: function() {
+                    alert('❌ Failed to save rubric');
+                }
+            });
+        }
+    </script>
+}
+
+@Html.AntiForgeryToken()

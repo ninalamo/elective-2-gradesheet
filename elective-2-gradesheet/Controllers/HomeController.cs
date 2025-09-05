@@ -593,60 +593,329 @@ namespace elective_2_gradesheet.Controllers
             return Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$";
         }
 
+        // Bulk Grading Methods
+        [HttpGet]
+        public async Task<IActionResult> BulkGrading(int? activityTemplateId = null, int? sectionId = null, bool showNonZeroGrades = false)
+        {
+            var viewModel = new BulkGradingViewModel();
+            
+            // Load sections
+            var sections = await _gradeService.GetActiveSectionsAsync();
+            viewModel.Sections = sections.Select(s => new SelectListItem 
+            { 
+                Value = s.Id.ToString(), 
+                Text = s.Name,
+                Selected = s.Id == sectionId
+            }).ToList();
+            
+            // If we have both parameters, initialize the view model with student data
+            if (activityTemplateId.HasValue && sectionId.HasValue)
+            {
+                try
+                {
+                    viewModel = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, showNonZeroGrades);
+                    viewModel.Sections = sections.Select(s => new SelectListItem 
+                    { 
+                        Value = s.Id.ToString(), 
+                        Text = s.Name,
+                        Selected = s.Id == sectionId
+                    }).ToList();
+                }
+                catch (Exception ex)
+                {
+                    TempData["ErrorMessage"] = ex.Message;
+                }
+            }
+            
+            return View(viewModel);
+        }
+
+        [HttpGet]
+        public async Task<JsonResult> GetActivityTemplates(int sectionId)
+        {
+            try
+            {
+                var activityTemplates = await _gradeService.GetActivityTemplatesBySectionAsync(sectionId);
+                var result = activityTemplates.Select(at => new 
+                {
+                    id = at.Id,
+                    name = at.Name,
+                    period = at.Period.ToString(),
+                    maxPoints = at.MaxPoints,
+                    hasRubric = !string.IsNullOrEmpty(at.RubricJson)
+                }).ToList();
+                
+                return Json(new { success = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<JsonResult> GetStudentsForBulkGrading(int sectionId, int activityTemplateId)
+        {
+            try
+            {
+                // First, validate that the activity template has a rubric
+                var activityTemplate = await _gradeService.GetActivityTemplatesBySectionAsync(sectionId);
+                var selectedActivity = activityTemplate.FirstOrDefault(at => at.Id == activityTemplateId);
+                
+                if (selectedActivity == null)
+                {
+                    return Json(new { success = false, message = "Activity template not found." });
+                }
+                
+                if (string.IsNullOrEmpty(selectedActivity.RubricJson))
+                {
+                    return Json(new { success = false, message = "This activity has no rubric. Bulk grading is not available for activities without rubrics." });
+                }
+                
+                var students = await _gradeService.GetStudentsBySectionAsync(sectionId);
+                
+                // Get existing submissions for this activity
+                var existingSubmissions = await _gradeService.GetStudentGroupsAsync(null, sectionId, null, null, 1, 1000);
+                
+                var result = students.Select(s => 
+                {
+                    // Find existing submission for this student and activity
+                    var existingSubmission = existingSubmissions
+                        .FirstOrDefault(sg => sg.StudentId == s.Id)?
+                        .ActivitiesByPeriod
+                        .SelectMany(kv => kv.Value)
+                        .FirstOrDefault(a => a.ActivityId != 0); // This would need to be improved to match specific activity
+                        
+                    return new BulkGradingStudentItem
+                    {
+                        StudentId = s.Id,
+                        StudentName = s.GetFullName(),
+                        StudentEmail = s.Email ?? "",
+                        GitHubLink = existingSubmission?.GithubLink,
+                        CurrentPoints = existingSubmission?.Points ?? 0,
+                        CurrentStatus = existingSubmission?.Status ?? "Missing",
+                        HasExistingSubmission = existingSubmission != null
+                    };
+                }).ToList();
+                
+                return Json(new { success = true, data = result });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<JsonResult> ProcessBulkGrading([FromBody] BulkGradingRequest request)
+        {
+            try
+            {
+                if (request == null || request.Submissions == null || !request.Submissions.Any())
+                {
+                    return Json(new { success = false, message = "No submissions provided." });
+                }
+                
+                // Validate that the activity template has a rubric before processing
+                var activityTemplates = await _gradeService.GetActivityTemplatesBySectionAsync(request.SectionId);
+                var selectedActivity = activityTemplates.FirstOrDefault(at => at.Id == request.ActivityTemplateId);
+                
+                if (selectedActivity == null)
+                {
+                    return Json(new { success = false, message = "Activity template not found." });
+                }
+                
+                if (string.IsNullOrEmpty(selectedActivity.RubricJson))
+                {
+                    return Json(new { success = false, message = "This activity has no rubric. Bulk grading is not available for activities without rubrics." });
+                }
+
+                var result = await _gradeService.ProcessBulkGradingAsync(request);
+                
+                return Json(new 
+                { 
+                    success = result.success, 
+                    message = result.message,
+                    results = result.results.Select(r => new
+                    {
+                        studentId = r.StudentId,
+                        studentName = r.StudentName,
+                        success = r.Success,
+                        message = r.Message,
+                        points = r.Points,
+                        status = r.Status,
+                        scoringDetails = r.ScoringDetails
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error processing bulk grading: {ex.Message}" });
+            }
+        }
+
+        // Enhanced Bulk Grading Methods
+        [HttpPost]
+        public async Task<JsonResult> StartBulkProcessing([FromBody] StartBulkProcessingRequest request)
+        {
+            try
+            {
+                if (request?.SelectedStudents == null || !request.SelectedStudents.Any())
+                {
+                    return Json(new { success = false, message = "No students selected for processing." });
+                }
+                
+                // Validate repository URLs
+                var invalidRepos = request.SelectedStudents.Where(s => string.IsNullOrWhiteSpace(s.RepositoryUrl)).ToList();
+                if (invalidRepos.Any())
+                {
+                    return Json(new { success = false, message = $"Some students have invalid repository URLs. Please check and try again." });
+                }
+
+                // Save repository URLs to database first
+                await _gradeService.SaveRepositoryUrlsAsync(request.ActivityTemplateId, request.SelectedStudents);
+                
+                // Extract student IDs for processing
+                var selectedStudentIds = request.SelectedStudents.Select(s => s.StudentId).ToList();
+
+                var sessionId = await _gradeService.StartBulkProcessingAsync(
+                    request.ActivityTemplateId, 
+                    request.SectionId, 
+                    selectedStudentIds, 
+                    request.ShowNonZeroGrades);
+
+                return Json(new { success = true, sessionId });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error starting bulk processing: {ex.Message}" });
+            }
+        }
+
+        [HttpGet]
+        public JsonResult GetBulkProcessingProgress(string sessionId)
+        {
+            try
+            {
+                var progress = _gradeService.GetBulkProcessingProgress(sessionId);
+                if (progress == null)
+                {
+                    return Json(new { success = false, message = "Session not found." });
+                }
+
+                return Json(new 
+                { 
+                    success = true, 
+                    progress = new
+                    {
+                        studentId = progress.StudentId,
+                        studentName = progress.StudentName,
+                        currentStep = progress.CurrentStep,
+                        repositoryUrl = progress.RepositoryUrl,
+                        processedCount = progress.ProcessedCount,
+                        totalCount = progress.TotalCount,
+                        progressPercentage = progress.ProgressPercentage,
+                        isComplete = progress.IsComplete,
+                        hasError = progress.HasError,
+                        errorMessage = progress.ErrorMessage
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public JsonResult GetBulkProcessingPreview(string sessionId)
+        {
+            try
+            {
+                var session = _gradeService.GetBulkProcessingSession(sessionId);
+                if (session == null)
+                {
+                    return Json(new { success = false, message = "Session not found." });
+                }
+
+                return Json(new 
+                { 
+                    success = true, 
+                    status = session.Status.ToString(),
+                    previewItems = session.PreviewItems.Select(item => new
+                    {
+                        studentId = item.StudentId,
+                        studentName = item.StudentName,
+                        repositoryUrl = item.RepositoryUrl,
+                        newPoints = item.NewPoints,
+                        newStatus = item.NewStatus,
+                        currentPoints = item.CurrentPoints,
+                        currentStatus = item.CurrentStatus,
+                        isNew = item.IsNew,
+                        isUpdate = item.IsUpdate,
+                        scoringDetails = item.ScoringDetails,
+                        requiresApproval = item.RequiresApproval,
+                        isApproved = item.IsApproved
+                    })
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public JsonResult UpdateApprovalStatus([FromBody] UpdateApprovalRequest request)
+        {
+            try
+            {
+                _gradeService.UpdateBulkApprovalStatus(request.SessionId, request.StudentId, request.IsApproved);
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public JsonResult BulkApproveAll([FromBody] BulkApprovalRequest request)
+        {
+            try
+            {
+                _gradeService.BulkApproveAll(request.SessionId, request.IsApproved);
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<JsonResult> SaveBulkGradingResults([FromBody] SaveBulkGradingRequest request)
+        {
+            try
+            {
+                var success = await _gradeService.SaveBulkGradingResultsAsync(request.SessionId);
+                if (success)
+                {
+                    // Cleanup the session after successful save
+                    _gradeService.CleanupBulkGradingSession(request.SessionId);
+                    return Json(new { success = true, message = "Bulk grading results saved successfully." });
+                }
+                else
+                {
+                    return Json(new { success = false, message = "Failed to save bulk grading results." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error saving bulk grading results: {ex.Message}" });
+            }
+        }
+
     }
 
-    public class RubricItem
-    {
-        public string Name { get; set; }
-        public int Points { get; set; }
-        public List<string> Keywords { get; set; }
-        public List<string> Files { get; set; }
-    }
-
-    public class FileContent
-    {
-        public string Name { get; set; }
-        public string Path { get; set; }
-        public string Content { get; set; }
-        public string ProjectDirectory { get; set; }
-    }
-
-    public class ScoringResult
-    {
-        public string FileName { get; set; }
-        public string Criterion { get; set; }
-        public int Points { get; set; }
-        [JsonPropertyName("proof")]
-        public string Proof { get; set; }
-        [JsonPropertyName("met")]
-        public bool Met { get; set; }
-    }
-
-    public class CloneRepositoryRequest
-    {
-        public string GithubUrl { get; set; }
-        public string OutputDirectory { get; set; }
-    }
-
-    public class GetRepositoryTreeRequest
-    {
-        public string ClonedDirectory { get; set; }
-    }
-
-    public class RemoveRepositoryItemRequest
-    {
-        public string ClonedDirectory { get; set; }
-        public string RelativePath { get; set; }
-    }
-
-    public class ScoreRepositoryRequest
-    {
-        public string ClonedDirectory { get; set; }
-        public string RubricJson { get; set; }
-    }
-
-    public class GetActivityTemplateRubricRequest
-    {
-        public string ActivityName { get; set; }
-    }
 }

@@ -5,6 +5,7 @@ using elective_2_gradesheet.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using elective_2_gradesheet.Controllers;
 
 namespace elective_2_gradesheet.Controllers
 {
@@ -12,11 +13,13 @@ namespace elective_2_gradesheet.Controllers
     {
         private readonly DbContext _context;
         private readonly IActivityTemplateService _activityTemplateService;
+        private readonly IRubricGenerationService _rubricGenerationService;
 
-        public ActivityTemplateController(DbContext context, IActivityTemplateService activityTemplateService)
+        public ActivityTemplateController(DbContext context, IActivityTemplateService activityTemplateService, IRubricGenerationService rubricGenerationService)
         {
             _context = context;
             _activityTemplateService = activityTemplateService;
+            _rubricGenerationService = rubricGenerationService;
         }
 
         // GET: ActivityTemplate
@@ -435,6 +438,83 @@ namespace elective_2_gradesheet.Controllers
         {
             var sampleRubricJson = await _activityTemplateService.GetSampleRubricJsonAsync();
             return Content(sampleRubricJson, "application/json");
+        }
+
+        // POST: ActivityTemplate/UploadProjectForRubric
+        [HttpPost]
+        public async Task<IActionResult> UploadProjectForRubric(IFormFile projectFile)
+        {
+            try
+            {
+                if (projectFile == null || projectFile.Length == 0)
+                {
+                    return Json(new { success = false, message = "Please select a project file to upload." });
+                }
+
+                // Validate file type
+                var allowedExtensions = new[] { ".zip", ".cs", ".js", ".ts", ".java", ".py", ".html", ".cshtml" };
+                var fileExtension = Path.GetExtension(projectFile.FileName).ToLower();
+                
+                if (!allowedExtensions.Contains(fileExtension))
+                {
+                    return Json(new { success = false, message = $"Unsupported file type. Allowed types: {string.Join(", ", allowedExtensions)}" });
+                }
+
+                // Generate rubric from uploaded project
+                var result = await _rubricGenerationService.GenerateRubricFromProjectAsync(projectFile);
+                
+                if (result.success)
+                {
+                    var rubricJson = JsonSerializer.Serialize(result.rubric, new JsonSerializerOptions 
+                    { 
+                        WriteIndented = true,
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
+
+                    return Json(new 
+                    { 
+                        success = true, 
+                        message = result.message,
+                        rubricJson = rubricJson,
+                        rubricItems = result.rubric?.Count ?? 0
+                    });
+                }
+                else
+                {
+                    return Json(new { success = false, message = result.message });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"Error processing upload: {ex.Message}" });
+            }
+        }
+
+        // GET: ActivityTemplate/ProjectUploader/{id}
+        public async Task<IActionResult> ProjectUploader(int? id)
+        {
+            if (id == null)
+            {
+                return NotFound();
+            }
+
+            var activityTemplate = await _context.Set<ActivityTemplate>()
+                .Include(at => at.Section)
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (activityTemplate == null)
+            {
+                return NotFound();
+            }
+
+            var model = new ProjectUploaderViewModel
+            {
+                ActivityTemplateId = activityTemplate.Id,
+                ActivityTemplateName = activityTemplate.Name,
+                CurrentRubricJson = activityTemplate.RubricJson
+            };
+
+            return View(model);
         }
 
         private bool ActivityTemplateExists(int id)
