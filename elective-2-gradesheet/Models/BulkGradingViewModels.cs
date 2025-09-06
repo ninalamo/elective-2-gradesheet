@@ -158,6 +158,6 @@ namespace elective_2_gradesheet.Models
     {
         public int StudentId { get; set; }
         public bool IsSelected { get; set; }
-        public string RepositoryUrl { get; set; } = string.Empty;
+        public string? RepositoryUrl { get; set; }
     }
 }

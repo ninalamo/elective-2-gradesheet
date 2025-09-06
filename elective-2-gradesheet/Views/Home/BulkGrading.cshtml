@@ -23,7 +23,7 @@
     <div class="row">
         <div class="col-12">
             <h1>@ViewData["Title"]</h1>
-            <p class="lead">Bulk grade student GitHub repository submissions</p>
+            <p class="lead">Process individual student GitHub repository submissions</p>
             
             @if (TempData["SuccessMessage"] != null)
             {
@@ -114,8 +114,9 @@
                     <input class="form-check-input" type="checkbox" name="showNonZeroGrades" 
                            @(Model.ShowNonZeroGrades ? "checked" : "") onchange="this.form.submit()">
                     <label class="form-check-label" for="showNonZeroGrades">
-                        Show students with non-zero grades
+                        <i class="fas fa-eye"></i> Include students with existing grades
                     </label>
+                    <small class="text-muted d-block">When unchecked: shows only students with zero/no grades (typical for new assignments)</small>
                 </div>
             </form>
         </div>
@@ -126,7 +127,15 @@
     {
         <div class="card mt-4">
             <div class="card-header">
-                <h5 class="card-title mb-0">Students (@Model.Students.Count)</h5>
+                <h5 class="card-title mb-0">
+                    Students 
+                    <span class="badge bg-primary">@Model.Students.Count(s => s.IsVisible) visible</span>
+                    @if (Model.Students.Count(s => !s.IsVisible) > 0)
+                    {
+                        <span class="badge bg-secondary ms-1">@Model.Students.Count(s => !s.IsVisible) hidden</span>
+                    }
+                </h5>
+                <p class="text-muted mb-0">Enter GitHub repository URLs and click "Process" to automatically clone, scan, score, and save grades</p>
             </div>
             <div class="card-body">
                 <form asp-action="ProcessBulkGrading" method="post">
@@ -135,172 +144,105 @@
                     
                     <div class="mb-3">
                         <button type="button" onclick="toggleAllCheckboxes(true)" class="btn btn-outline-primary btn-sm me-2">
-                            <i class="fas fa-check-square"></i> Select All Visible
+                            <i class="fas fa-check-square"></i> Select All
                         </button>
                         <button type="button" onclick="toggleAllCheckboxes(false)" class="btn btn-outline-secondary btn-sm me-2">
                             <i class="far fa-square"></i> Deselect All
                         </button>
-                        <button type="submit" class="btn btn-success">
+                        <button type="submit" class="btn btn-success" id="processBtn">
                             <i class="fas fa-play"></i> Process Selected Students
                         </button>
                     </div>
                     
                     <div class="table-responsive">
                         <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th width="40">Select</th>
-                                    <th>Student Name</th>
-                                    <th>Current Status</th>
-                                    <th>Current Points</th>
-                                    <th width="300">GitHub Repository URL</th>
-                                    <th>Notes</th>
+                        <thead>
+                            <tr>
+                                <th width="40">Select</th>
+                                <th>Student Name</th>
+                                <th>Current Status</th>
+                                <th>Current Points</th>
+                                <th width="350">GitHub Repository URL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Students.Count; i++)
+                            {
+                                var student = Model.Students[i];
+                                var hasNonZeroGrade = student.HasNonZeroGrade;
+                                var isVisible = student.IsVisible;
+                                
+                                <tr @(isVisible ? "" : "style=display:none")>
+                                    <td>
+                                        <input type="checkbox" 
+                                               name="SelectedStudents[@i].IsSelected" 
+                                               value="true" 
+                                               class="form-check-input student-checkbox" 
+                                               @(student.IsSelected ? "checked" : "") 
+                                               @(isVisible ? "" : "style=display:none") />
+                                        <input type="hidden" name="SelectedStudents[@i].StudentId" value="@student.StudentId" />
+                                    </td>
+                                    <td><strong>@student.StudentName</strong></td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(student.CurrentStatus)">
+                                            @(student.CurrentStatus ?? "No Status")
+                                        </span>
+                                    </td>
+                                    <td>@(student.CurrentPoints ?? 0)</td>
+                                    <td>
+                                        <input type="url" 
+                                               class="form-control form-control-sm" 
+                                               name="SelectedStudents[@i].RepositoryUrl"
+                                               value="@student.RepositoryUrl"
+                                               placeholder="https://github.com/user/repo"
+                                               pattern="https://github\.com/.+" 
+                                               title="Please enter a valid GitHub repository URL"
+                                               id="repo-@student.StudentId" />
+                                        <small class="text-muted d-block">GitHub repository URL (required for processing)</small>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                @for (int i = 0; i < Model.Students.Count; i++)
-                                {
-                                    var student = Model.Students[i];
-                                    var isVisible = student.IsVisible;
-                                    var hasNonZeroGrade = student.HasNonZeroGrade;
-                                    var notes = hasNonZeroGrade ? "Has non-zero grade" : (student.HasTurnedIn ? "Turned in" : "No submission");
-                                    
-                                    <tr @(isVisible ? "" : "style=display:none")>
-                                        <td>
-                                            <input type="checkbox" name="SelectedStudents[@i].IsSelected" 
-                                                   value="true" class="form-check-input student-checkbox"
-                                                   @(student.IsSelected ? "checked" : "") />
-                                            <input type="hidden" name="SelectedStudents[@i].StudentId" value="@student.StudentId" />
-                                        </td>
-                                        <td>@student.StudentName</td>
-                                        <td>
-                                            <span class="badge @GetStatusBadgeClass(student.CurrentStatus)">
-                                                @(student.CurrentStatus ?? "No Status")
-                                            </span>
-                                        </td>
-                                        <td>@(student.CurrentPoints ?? 0)</td>
-                                        <td>
-                                            <input type="url" class="form-control form-control-sm" 
-                                                   name="SelectedStudents[@i].RepositoryUrl"
-                                                   value="@student.RepositoryUrl"
-                                                   placeholder="https://github.com/user/repo"
-                                                   pattern="https://github\.com/.+" 
-                                                   title="Please enter a valid GitHub repository URL" />
-                                            <small class="text-muted">GitHub repository URL (required for processing)</small>
-                                        </td>
-                                        <td><small class="text-muted">@notes</small></td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>How it works:</strong> Select students, enter their GitHub repository URLs, and click "Process Selected Students". 
+                        The system will automatically clone repositories, scan the code against the rubric, calculate scores, and save all results to the database.
+                        <br><br>
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Note:</strong> This will process all selected students at once. The operation may take a few minutes depending on the number of repositories.
                     </div>
-                    
-                    <div class="mt-3">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle"></i>
-                            Select students and enter their GitHub repository URLs, then click "Process Selected Students".
-                            <br>
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <strong>Note:</strong> Processing will clone repositories, scan for code patterns, and score against the rubric.
-                        </small>
-                    </div>
-                </form>
+                </div>
+            </form>
             </div>
         </div>
     }
 
-    <!-- Progress Section -->
-    <div id="progressSection" class="card mt-4" style="display: none;">
-        <div class="card-header">
-            <h5 class="card-title mb-0">
-                <i class="fas fa-spinner fa-spin"></i> Processing Students
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="mb-3">
-                <div id="overallProgress" class="progress">
-                    <div class="progress-bar" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                </div>
-                <small class="text-muted mt-1">Processing <span id="currentStudentName"></span>...</small>
-            </div>
-            
-            <div class="alert alert-info">
-                <strong>Current Step:</strong> <span id="currentStep">Starting...</span><br>
-                <strong>Repository:</strong> <span id="currentRepository">-</span><br>
-                <strong>Progress:</strong> <span id="progressText">0 / 0 students</span>
-            </div>
-            
-            <div id="progressLog" class="border rounded p-3" style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa;">
-                <!-- Progress log will be added here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Preview Section -->
-    <div id="previewSection" class="card mt-4" style="display: none;">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title mb-0">Preview Changes</h5>
-            <div>
-                <button type="button" id="approveAllBtn" class="btn btn-outline-success btn-sm me-2">
-                    <i class="fas fa-check"></i> Approve All
-                </button>
-                <button type="button" id="rejectAllBtn" class="btn btn-outline-danger btn-sm me-2">
-                    <i class="fas fa-times"></i> Reject All
-                </button>
-                <button type="button" id="saveChangesBtn" class="btn btn-primary" disabled>
-                    <i class="fas fa-save"></i> Save Changes
-                </button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="alert alert-warning">
-                <strong>Review Required:</strong> Please review and approve the changes below before saving to the database.
-                Items requiring approval are marked with a warning icon.
-            </div>
-            
-            <div class="table-responsive">
-                <table id="previewTable" class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th width="60">Approve</th>
-                            <th>Student</th>
-                            <th>Action</th>
-                            <th>New Points</th>
-                            <th>New Status</th>
-                            <th>Current</th>
-                            <th>Details</th>
-                        </tr>
-                    </thead>
-                    <tbody id="previewTableBody">
-                        <!-- Preview items will be loaded here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- Final Results Section -->
-    <div id="finalResultsSection" class="card mt-4" style="display: none;">
-        <div class="card-header">
-            <h5 class="card-title mb-0">
-                <i class="fas fa-check-circle text-success"></i> Processing Complete
-            </h5>
-        </div>
-        <div class="card-body">
-            <div id="finalMessage" class="alert alert-success">
-                <!-- Final success message -->
-            </div>
-        </div>
-    </div>
 </div>
 
-<!-- Loading Modal -->
-<div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-sm">
+<!-- Processing Results Modal -->
+<div class="modal fade" id="resultsModal" tabindex="-1" aria-labelledby="resultsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-body text-center">
-                <div class="spinner-border" role="status" aria-hidden="true"></div>
-                <div class="mt-2">Processing...</div>
+            <div class="modal-header">
+                <h5 class="modal-title" id="resultsModalLabel">
+                    <i class="fas fa-chart-line"></i> Processing Results Summary
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="processingResults">
+                    <!-- Results will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="window.location.reload()">
+                    <i class="fas fa-refresh"></i> Refresh Page
+                </button>
             </div>
         </div>
     </div>
@@ -308,14 +250,10 @@
 
 @section Scripts {
     <script>
-        // Simple MVC-style helper functions
         function toggleAllCheckboxes(select) {
             const checkboxes = document.querySelectorAll('.student-checkbox');
             checkboxes.forEach(checkbox => {
-                const row = checkbox.closest('tr');
-                if (row.style.display !== 'none') {
-                    checkbox.checked = select;
-                }
+                checkbox.checked = select;
             });
         }
         
@@ -331,6 +269,7 @@
                         return false;
                     }
                     
+                    // Check for valid repository URLs on selected students
                     let hasValidRepo = false;
                     let missingRepos = [];
                     
@@ -361,574 +300,71 @@
                     }
                     
                     // Show loading state
-                    const submitBtn = form.querySelector('button[type="submit"]');
+                    const submitBtn = form.querySelector('#processBtn');
                     submitBtn.disabled = true;
                     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+                    
+                    return true; // Allow form submission
                 });
             }
         });
+        
+        // Show processing results modal if available
+        @if (TempData["ProcessingResults"] != null)
+        {
+            @:showResultsModal(@Html.Raw(TempData["ProcessingResults"]));
+        }
+        
+        function showResultsModal(results) {
+            const successCount = results.ProcessedCount;
+            const errorCount = results.ErrorCount;
+            const totalCount = results.TotalCount;
+            
+            let html = `
+                <div class="alert ${successCount > 0 ? 'alert-success' : 'alert-danger'}">
+                    <h6><i class="fas fa-chart-pie"></i> Summary</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <strong>Processed:</strong> ${successCount}/${totalCount}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Successful:</strong> ${successCount}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Errors:</strong> ${errorCount}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6><i class="fas fa-list"></i> Detailed Results</h6>
+                    <div class="list-group">
+            `;
+            
+            results.Results.forEach(function(result) {
+                const iconClass = result.IsSuccess ? 'fa-check text-success' : 'fa-times text-danger';
+                const bgClass = result.IsSuccess ? 'list-group-item-success' : 'list-group-item-danger';
+                
+                html += `
+                    <div class="list-group-item ${bgClass}">
+                        <i class="fas ${iconClass} me-2"></i>${result.Message}
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('processingResults').innerHTML = html;
+            
+            // Show the modal
+            var modal = new bootstrap.Modal(document.getElementById('resultsModal'));
+            modal.show();
+        }
     </script>
 }
 
-            // Load students button
-            $('#loadStudentsBtn').on('change', function() {
-                const showNonZero = $(this).is(':checked');
-                if (currentSectionId && currentActivityId) {
-                    loadStudents(currentSectionId, currentActivityId, showNonZero);
-                }
-            });
-
-            $('#loadStudentsBtn').on('click', function() {
-                const showNonZero = $('#showNonZeroGrades').is(':checked');
-                if (currentSectionId && currentActivityId) {
-                    loadStudents(currentSectionId, currentActivityId, showNonZero);
-                }
-            });
-
-            // Show/hide students with non-zero grades
-            $('#showNonZeroGrades').on('change', function() {
-                const showNonZero = $(this).is(':checked');
-                filterStudentVisibility(showNonZero);
-            });
-
-            // Select/deselect all buttons
-            $('#selectAllBtn').on('click', function() {
-                $('.student-checkbox:visible').prop('checked', true).trigger('change');
-            });
-
-            $('#deselectAllBtn').on('click', function() {
-                $('.student-checkbox').prop('checked', false).trigger('change');
-            });
-
-            // Process selected button
-            $('#processSelectedBtn').on('click', function() {
-                processSelectedStudents();
-            });
-
-            // Preview section buttons
-            $('#approveAllBtn').on('click', function() {
-                $('.approval-checkbox').prop('checked', true).trigger('change');
-            });
-
-            $('#rejectAllBtn').on('click', function() {
-                $('.approval-checkbox').prop('checked', false).trigger('change');
-            });
-
-            $('#saveChangesBtn').on('click', function() {
-                saveBulkGradingResults();
-            });
-
-            // Table sorting functionality
-            $('.sortable').on('click', function() {
-                const sortBy = $(this).data('sort');
-                sortStudentsTable(sortBy);
-            });
-
-            // Load activity templates for section
-            function loadActivityTemplates(sectionId) {
-                $.get('/Home/GetActivityTemplates', { sectionId: sectionId }, function(response) {
-                    if (response.success) {
-                        const select = $('#activitySelect');
-                        select.empty().append('<option value="">Select an Activity</option>');
-                        
-                        response.data.forEach(function(activity) {
-                            select.append($('<option></option>')
-                                .attr('value', activity.id)
-                                .attr('data-maxpoints', activity.maxPoints)
-                                .attr('data-hasrubric', activity.hasRubric)
-                                .text(`${activity.name} (${activity.period}) - ${activity.maxPoints}pts`));
-                        });
-                    } else {
-                        alert('Error loading activities: ' + response.message);
-                    }
-                }).fail(function() {
-                    alert('Failed to load activities');
-                });
-            }
-
-            // Load students using enhanced bulk grading service
-            function loadStudents(sectionId, activityId, showNonZeroGrades = false) {
-                showLoading();
-                
-                window.location.href = `/Home/BulkGrading?sectionId=${sectionId}&activityTemplateId=${activityId}&showNonZeroGrades=${showNonZeroGrades}`;
-            }
-
-            // Filter student visibility based on grade status
-            function filterStudentVisibility(showNonZero) {
-                $('.student-row').each(function() {
-                    const hasNonZeroGrade = $(this).data('has-nonzero-grade');
-                    if (showNonZero || !hasNonZeroGrade) {
-                        $(this).show();
-                    } else {
-                        $(this).hide();
-                    }
-                });
-                updateSelectedCount();
-            }
-
-            // Update selected count display
-            function updateSelectedCount() {
-                const visibleChecked = document.querySelectorAll('.student-checkbox:not([style*="display: none"]):checked');
-                const selectedCount = visibleChecked.length;
-                
-                const selectedCountEl = document.getElementById('selectedCount');
-                selectedCountEl.textContent = selectedCount;
-                updateProcessButtonState(); // Also check repository validation
-            }
-
-            // Table sorting functionality
-            let currentSort = { column: null, direction: 'asc' };
-            
-            function sortStudentsTable(sortBy) {
-                const tbody = $('#studentsTableBody');
-                const rows = tbody.find('tr.student-row').toArray();
-                
-                // Determine sort direction
-                if (currentSort.column === sortBy) {
-                    currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
-                } else {
-                    currentSort.column = sortBy;
-                    currentSort.direction = 'asc';
-                }
-                
-                // Update sort icons
-                $('.sortable i').removeClass('fa-sort-up fa-sort-down').addClass('fa-sort');
-                const currentHeader = $(`.sortable[data-sort="${sortBy}"] i`);
-                currentHeader.removeClass('fa-sort').addClass(currentSort.direction === 'asc' ? 'fa-sort-up' : 'fa-sort-down');
-                
-                // Sort rows
-                rows.sort((a, b) => {
-                    let aVal, bVal;
-                    const aRow = $(a);
-                    const bRow = $(b);
-                    
-                    switch (sortBy) {
-                        case 'name':
-                            aVal = aRow.find('td:nth-child(2)').text().trim();
-                            bVal = bRow.find('td:nth-child(2)').text().trim();
-                            break;
-                        case 'status':
-                            aVal = aRow.find('td:nth-child(3) .badge').text().trim();
-                            bVal = bRow.find('td:nth-child(3) .badge').text().trim();
-                            break;
-                        case 'points':
-                            aVal = parseFloat(aRow.find('td:nth-child(4)').text().trim()) || 0;
-                            bVal = parseFloat(bRow.find('td:nth-child(4)').text().trim()) || 0;
-                            break;
-                        case 'notes':
-                            aVal = aRow.find('td:nth-child(7)').text().trim();
-                            bVal = bRow.find('td:nth-child(7)').text().trim();
-                            break;
-                        default:
-                            return 0;
-                    }
-                    
-                    let comparison = 0;
-                    if (typeof aVal === 'string' && typeof bVal === 'string') {
-                        comparison = aVal.localeCompare(bVal);
-                    } else {
-                        comparison = aVal - bVal;
-                    }
-                    
-                    return currentSort.direction === 'asc' ? comparison : -comparison;
-                });
-                
-                // Re-append sorted rows
-                tbody.empty();
-                rows.forEach(row => tbody.append(row));
-            }
-
-            // Process selected students
-            function processSelectedStudents() {
-                const selectedStudents = [];
-                const missingRepos = [];
-                
-                const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
-                checkedBoxes.forEach(checkbox => {
-                    const row = checkbox.closest('tr');
-                    const studentId = parseInt(checkbox.dataset.studentId);
-                    const repoInput = row.querySelector('.repo-input');
-                    const repoUrl = repoInput.value;
-                    const studentName = row.querySelector('td:nth-child(2)').textContent.trim();
-                    
-                    if (!repoUrl || repoUrl.trim() === '') {
-                        missingRepos.push(studentName);
-                    } else {
-                        selectedStudents.push({
-                            studentId: studentId,
-                            repositoryUrl: repoUrl.trim()
-                        });
-                    }
-                });
-                
-                if (selectedStudents.length === 0) {
-                    alert('No students selected for processing.');
-                    return;
-                }
-                
-                if (missingRepos.length > 0) {
-                    const proceed = confirm(`The following students have no repository URL specified:\n\n${missingRepos.join('\n')}\n\nDo you want to continue processing only the students with repository URLs?`);
-                    if (!proceed) {
-                        return;
-                    }
-                }
-
-                const request = {
-                    activityTemplateId: currentActivityId,
-                    sectionId: currentSectionId,
-                    selectedStudents: selectedStudents,
-                    showNonZeroGrades: $('#showNonZeroGrades').is(':checked')
-                };
-
-                $.ajax({
-                    url: '/Home/StartBulkProcessing',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(request),
-                    success: function(response) {
-                        if (response.success) {
-                            currentSessionId = response.sessionId;
-                            showProgressSection();
-                            startProgressPolling();
-                        } else {
-                            alert('Error starting bulk processing: ' + response.message);
-                        }
-                    },
-                    error: function() {
-                        alert('Failed to start bulk processing');
-                    }
-                });
-            }
-
-            // Start polling for progress updates
-            function startProgressPolling() {
-                if (progressInterval) {
-                    clearInterval(progressInterval);
-                }
-
-                progressInterval = setInterval(function() {
-                    if (currentSessionId) {
-                        updateProgress();
-                    }
-                }, 1000); // Poll every second
-            }
-
-            // Update progress display
-            function updateProgress() {
-                $.get('/Home/GetBulkProcessingProgress', { sessionId: currentSessionId }, function(response) {
-                    if (response.success) {
-                        const progress = response.progress;
-                        const percentage = Math.round(progress.progressPercentage);
-                        
-                        $('#overallProgress .progress-bar')
-                            .css('width', percentage + '%')
-                            .attr('aria-valuenow', percentage)
-                            .text(percentage + '%');
-                        
-                        $('#currentStudentName').text(progress.studentName || 'Unknown');
-                        $('#currentStep').text(progress.currentStep || 'Processing...');
-                        $('#currentRepository').text(progress.repositoryUrl || '-');
-                        $('#progressText').text(`${progress.processedCount} / ${progress.totalCount} students`);
-                        
-                        // Add to progress log
-                        if (progress.currentStep && progress.studentName) {
-                            const logEntry = `[${new Date().toLocaleTimeString()}] ${progress.studentName}: ${progress.currentStep}`;
-                            const logDiv = $('<div>').addClass('small text-muted').text(logEntry);
-                            $('#progressLog').append(logDiv);
-                            // Auto-scroll to bottom
-                            $('#progressLog').scrollTop($('#progressLog')[0].scrollHeight);
-                        }
-                        
-                        if (progress.isComplete) {
-                            clearInterval(progressInterval);
-                            progressInterval = null;
-                            
-                            if (progress.hasError) {
-                                alert('Processing completed with errors: ' + progress.errorMessage);
-                            } else {
-                                // Load preview
-                                setTimeout(loadPreview, 1000);
-                            }
-                        }
-                    }
-                });
-            }
-
-            // Load preview of changes
-            function loadPreview() {
-                $.get('/Home/GetBulkProcessingPreview', { sessionId: currentSessionId }, function(response) {
-                    if (response.success) {
-                        populatePreviewTable(response.previewItems);
-                        showPreviewSection();
-                    } else {
-                        alert('Error loading preview: ' + response.message);
-                    }
-                });
-            }
-
-            // Populate preview table
-            function populatePreviewTable(previewItems) {
-                const tbody = $('#previewTableBody');
-                tbody.empty();
-                
-                previewItems.forEach(function(item) {
-                    const requiresApproval = item.requiresApproval;
-                    const actionText = item.isNew ? 'New Submission' : 'Update Existing';
-                    const actionClass = item.isNew ? 'badge bg-success' : 'badge bg-warning';
-                    const currentText = item.isNew ? '-' : `${item.currentPoints}pts, ${item.currentStatus}`;
-                    
-                    const row = $(`
-                        <tr data-student-id="${item.studentId}">
-                            <td>
-                                ${requiresApproval ? 
-                                    `<input type="checkbox" class="form-check-input approval-checkbox" data-student-id="${item.studentId}" ${item.isApproved ? 'checked' : ''}>`
-                                    : '<i class="fas fa-check text-success"></i>'}
-                            </td>
-                            <td>${item.studentName}</td>
-                            <td><span class="${actionClass}">${actionText}</span></td>
-                            <td>${item.newPoints}</td>
-                            <td>${item.newStatus}</td>
-                            <td><small class="text-muted">${currentText}</small></td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-outline-info" onclick="showScoringDetails('${item.studentId}')">
-                                    <i class="fas fa-info-circle"></i> Details
-                                </button>
-                            </td>
-                        </tr>
-                    `);
-                    tbody.append(row);
-                });
-                
-                // Update save button state
-                updateSaveButtonState();
-                
-                // Bind approval checkbox events
-                $('.approval-checkbox').on('change', updateSaveButtonState);
-            }
-
-            // Update save button state based on approvals
-            function updateSaveButtonState() {
-                const totalRequiringApproval = $('.approval-checkbox').length;
-                const approvedCount = $('.approval-checkbox:checked').length;
-                const canSave = totalRequiringApproval === 0 || approvedCount > 0;
-                $('#saveChangesBtn').prop('disabled', !canSave);
-            }
-
-            // Save bulk grading results
-            function saveBulkGradingResults() {
-                // Update approval statuses
-                $('.approval-checkbox').each(function() {
-                    const studentId = $(this).data('student-id');
-                    const isApproved = $(this).is(':checked');
-                    
-                    $.ajax({
-                        url: '/Home/UpdateApprovalStatus',
-                        type: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({ sessionId: currentSessionId, studentId: studentId, isApproved: isApproved }),
-                        async: false // Ensure all updates complete before saving
-                    });
-                });
-                
-                // Save results
-                $.ajax({
-                    url: '/Home/SaveBulkGradingResults',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify({ sessionId: currentSessionId }),
-                    success: function(response) {
-                        if (response.success) {
-                            showFinalResults(response.message);
-                        } else {
-                            alert('Error saving results: ' + response.message);
-                        }
-                    },
-                    error: function() {
-                        alert('Failed to save results');
-                    }
-                });
-            }
-
-            // Show no rubric alert
-            function showNoRubricAlert() {
-                if ($('#noRubricAlert').length === 0) {
-                    $('#activityInfo').after(`
-                        <div id="noRubricAlert" class="alert alert-warning mt-2">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <strong>Cannot Process:</strong> This activity has no rubric defined. 
-                            Bulk grading requires activities to have rubrics for automatic scoring.
-                            <br><small>Please select an activity that has a rubric, or add a rubric to this activity first.</small>
-                        </div>
-                    `);
-                } else {
-                    $('#noRubricAlert').show();
-                }
-            }
-
-            // Show final results
-            function showFinalResults(message) {
-                hideAllSections();
-                $('#finalMessage').text(message);
-                $('#finalResultsSection').show();
-            }
-
-            // Section visibility helper functions
-            function showProgressSection() {
-                hideAllSections();
-                $('#progressSection').show();
-                // Clear previous progress log
-                $('#progressLog').empty();
-            }
-
-            function showPreviewSection() {
-                $('#progressSection').hide();
-                $('#previewSection').show();
-            }
-
-            function hideAllSections() {
-                $('#studentsSection').hide();
-                $('#progressSection').hide();
-                $('#previewSection').hide();
-                $('#finalResultsSection').hide();
-                $('#noRubricAlert').hide();
-            }
-
-            function showLoading() {
-                $('#loadingModal').modal('show');
-            }
-
-            function hideLoading() {
-                $('#loadingModal').modal('hide');
-            }
-            
-            // Initialize page if we have students data from server
-            @if (Model.Students != null && Model.Students.Any())
-            {
-                @:// Populate the students table with server data
-                @:const students = @Html.Raw(Json.Serialize(Model.Students));
-                @:populateStudentsTable(students);
-                @:$('#studentsSection').show();
-                @:
-                @:// Set the show non-zero grades checkbox state
-                @:$('#showNonZeroGrades').prop('checked', @Model.ShowNonZeroGrades.ToString().ToLower());
-            }
-
-            // Populate students table with server data
-            function populateStudentsTable(students) {
-                const tbody = $('#studentsTableBody');
-                tbody.empty();
-                
-                students.forEach(function(student) {
-                    const isVisible = student.isVisible;
-                    const displayStyle = isVisible ? '' : 'style="display: none;"';
-                    const hasNonZeroGrade = student.hasNonZeroGrade;
-                    const notes = hasNonZeroGrade ? 'Has non-zero grade' : (student.hasTurnedIn ? 'Turned in' : 'No submission');
-                    
-                    const row = $(`
-                        <tr class="student-row" data-student-id="${student.studentId}" data-has-nonzero-grade="${hasNonZeroGrade}" ${displayStyle}>
-                            <td>
-                                <input type="checkbox" class="form-check-input student-checkbox" 
-                                       data-student-id="${student.studentId}" 
-                                       ${student.isSelected ? 'checked' : ''}>
-                            </td>
-                            <td>${student.studentName}</td>
-                            <td>
-                                <span class="badge ${getStatusBadgeClass(student.currentStatus)}">
-                                    ${student.currentStatus || 'No Status'}
-                                </span>
-                            </td>
-                            <td>${student.currentPoints || 0}</td>
-                            <td>
-                                <input type="url" class="form-control form-control-sm repo-input" 
-                                       data-student-id="${student.studentId}" 
-                                       placeholder="https://github.com/user/repo"
-                                       value="${student.repositoryUrl || ''}">
-                                <small class="text-muted">GitHub repository URL</small>
-                            </td>
-                            <td><small class="text-muted">${notes}</small></td>
-                        </tr>
-                    `);
-                    tbody.append(row);
-                });
-                
-                // Unbind previous events to avoid duplicates, then bind new events
-                $('.student-checkbox').off('change').on('change', updateSelectedCount);
-                $('.repo-input').off('input blur').on('input', function() {
-                    validateRepositoryUrl($(this));
-                }).on('blur', function() {
-                    // Auto-save repository URL when user leaves the field
-                    const $input = $(this);
-                    const repoUrl = $input.val();
-                    if (repoUrl && repoUrl.trim() && $input[0].checkValidity()) {
-                        const studentId = $input.data('student-id');
-                        // Could save to database here if needed
-                        console.log(`Auto-save repo URL for student ${studentId}: ${repoUrl.trim()}`);
-                    }
-                });
-                
-                updateSelectedCount();
-                
-                // Bind sorting events to headers (prevent duplicates)
-                $('.sortable').off('click').on('click', function() {
-                    const sortBy = $(this).data('sort');
-                    sortStudentsTable(sortBy);
-                });
-            }
-
-            // Get status badge class
-            function getStatusBadgeClass(status) {
-                if (!status) return 'bg-secondary';
-                switch(status.toLowerCase()) {
-                    case 'turned in': return 'bg-success';
-                    case 'completed': return 'bg-success';
-                    case 'not turned in': return 'bg-danger';
-                    case 'missing': return 'bg-secondary';
-                    default: return 'bg-secondary';
-                }
-            }
-
-            // Repository URL validation function
-            function validateRepositoryUrl(input) {
-                const url = input.value.trim();
-                const isValid = url === '' || (url.includes('github.com') && url.startsWith('https://'));
-                
-                input.classList.remove('is-valid', 'is-invalid');
-                if (url) {
-                    input.classList.add(isValid ? 'is-valid' : 'is-invalid');
-                }
-                
-                // Update process button state
-                updateProcessButtonState();
-            }
-            
-            // Update process button state based on repository URLs
-            function updateProcessButtonState() {
-                const selectedCheckboxes = document.querySelectorAll('.student-checkbox:checked');
-                const selectedCount = selectedCheckboxes.length;
-                let hasValidRepos = true;
-                
-                for (const checkbox of selectedCheckboxes) {
-                    const row = checkbox.closest('tr');
-                    const repoInput = row.querySelector('.repo-input');
-                    const repoUrl = repoInput.value;
-                    
-                    if (!repoUrl || repoUrl.trim() === '' || !repoInput.checkValidity()) {
-                        hasValidRepos = false;
-                        break; // Exit early
-                    }
-                }
-                
-                const processBtn = document.getElementById('processSelectedBtn');
-                processBtn.disabled = selectedCount === 0 || !hasValidRepos;
-            }
-
-            // Global function for showing scoring details (called from preview table)
-            window.showScoringDetails = function(studentId) {
-                // This would show a modal with detailed scoring information
-                // For now, we'll just show an alert - you can implement a proper modal later
-                alert('Scoring details for student ID: ' + studentId + '\n\nThis would show detailed rubric scoring information.');
-            };
-            
-        });
     </script>
 }
