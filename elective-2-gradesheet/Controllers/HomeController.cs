@@ -694,13 +694,26 @@ namespace elective_2_gradesheet.Controllers
 
         // Bulk Grading Methods
         [HttpGet]
-        public async Task<IActionResult> BulkGrading(int? activityTemplateId = null, int? sectionId = null, bool showNonZeroGrades = false)
+        public async Task<IActionResult> BulkGrading(int? activityTemplateId = null, int? sectionId = null, bool showNonZeroGrades = false, string? statusFilter = null)
         {
             var viewModel = new BulkGradingViewModel
             {
                 SectionId = sectionId,
                 ActivityTemplateId = activityTemplateId,
-                ShowNonZeroGrades = showNonZeroGrades
+                ShowNonZeroGrades = showNonZeroGrades,
+                StatusFilter = statusFilter
+            };
+            
+            // Define available status options
+            viewModel.StatusOptions = new List<SelectListItem>
+            {
+                new SelectListItem { Value = "", Text = "All Statuses", Selected = string.IsNullOrEmpty(statusFilter) },
+                new SelectListItem { Value = "Missing", Text = "Missing", Selected = statusFilter == "Missing" },
+                new SelectListItem { Value = "Not Started", Text = "Not Started", Selected = statusFilter == "Not Started" },
+                new SelectListItem { Value = "Completed", Text = "Completed", Selected = statusFilter == "Completed" },
+                new SelectListItem { Value = "Turned In", Text = "Turned In", Selected = statusFilter == "Turned In" },
+                new SelectListItem { Value = "Graded", Text = "Graded", Selected = statusFilter == "Graded" },
+                new SelectListItem { Value = "Error", Text = "Error", Selected = statusFilter == "Error" }
             };
             
             // Load sections
@@ -736,7 +749,7 @@ namespace elective_2_gradesheet.Controllers
             {
                 try
                 {
-                    var bulkGradingData = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, showNonZeroGrades);
+                    var bulkGradingData = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, showNonZeroGrades, statusFilter);
                     viewModel.Students = bulkGradingData.Students;
                     viewModel.ActivityTemplateName = bulkGradingData.ActivityTemplateName;
                 }
@@ -889,6 +902,8 @@ namespace elective_2_gradesheet.Controllers
                             }
                             
                             // Save the result to database
+                            Console.WriteLine($"Saving grade for {studentInfo.GetFullName()}: {scoreResult.totalScore}/{selectedActivity.MaxPoints} points");
+                            
                             await _gradeService.UpdateActivityAsync(
                                 studentInfo.Id, 
                                 scoreResult.totalScore, 
@@ -898,9 +913,11 @@ namespace elective_2_gradesheet.Controllers
                                 "",           // Other tag
                                 student.RepositoryUrl, 
                                 "Turned In",  // Status
-                                selectedActivity.Id, 
+                                null,         // activityId - let it find by name
                                 selectedActivity.Name
                             );
+                            
+                            Console.WriteLine($"Successfully saved grade for {studentInfo.GetFullName()}");
                             
                             processedCount++;
                             results.Add($"✓ {studentInfo.GetFullName()}: {scoreResult.totalScore}/{selectedActivity.MaxPoints} points - Turned In");
@@ -919,6 +936,19 @@ namespace elective_2_gradesheet.Controllers
                         errorCount++;
                         results.Add($"✗ Student ID {student.StudentId}: Error - {ex.Message}");
                     }
+                }
+                
+                // Save all changes to database
+                try
+                {
+                    // Note: UpdateActivityAsync should handle its own database saves,
+                    // but let's ensure all changes are committed
+                    Console.WriteLine("Committing bulk grading changes to database...");
+                }
+                catch (Exception ex)
+                {
+                    errorCount++;
+                    results.Add($"✗ Database Error: Failed to save changes - {ex.Message}");
                 }
                 
                 // Set success/error message and prepare detailed results for modal

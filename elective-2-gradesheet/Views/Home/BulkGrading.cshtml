@@ -110,13 +110,34 @@
                     </div>
                 }
                 
-                <div class="form-check mt-3">
-                    <input class="form-check-input" type="checkbox" name="showNonZeroGrades" 
-                           @(Model.ShowNonZeroGrades ? "checked" : "") onchange="this.form.submit()">
-                    <label class="form-check-label" for="showNonZeroGrades">
-                        <i class="fas fa-eye"></i> Include students with existing grades
-                    </label>
-                    <small class="text-muted d-block">When unchecked: shows only students with zero/no grades (typical for new assignments)</small>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="showNonZeroGrades" 
+                                   @(Model.ShowNonZeroGrades ? "checked" : "") onchange="this.form.submit()">
+                            <label class="form-check-label" for="showNonZeroGrades">
+                                <i class="fas fa-eye"></i> Include students with existing grades
+                            </label>
+                            <small class="text-muted d-block">When unchecked: shows only students with zero/no grades (typical for new assignments)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="statusFilter"><i class="fas fa-filter"></i> Filter by Status:</label>
+                            <select name="statusFilter" class="form-select" onchange="this.form.submit()">
+                                @if (Model.StatusOptions != null)
+                                {
+                                    @foreach (var statusOption in Model.StatusOptions)
+                                    {
+                                        <option value="@(statusOption.Value)" selected="@statusOption.Selected">
+                                            @(statusOption.Text)
+                                        </option>
+                                    }
+                                }
+                            </select>
+                            <small class="text-muted">Filter students by their current submission status</small>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
