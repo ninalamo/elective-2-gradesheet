@@ -11,8 +11,10 @@
         return status.ToLower() switch
         {
             "turned in" => "bg-success",
+            "turned in late" => "bg-warning",
             "completed" => "bg-success",
             "graded" => "bg-primary",
+            "returned" => "bg-info",
             "not turned in" => "bg-danger",
             "viewed" => "bg-info",
             "missing" => "bg-secondary",
@@ -214,18 +216,27 @@
                                 var student = Model.Students[i];
                                 var hasNonZeroGrade = student.HasNonZeroGrade;
                                 var isVisible = student.IsVisible;
+                                var isGraded = string.Equals(student.CurrentStatus, "Graded", StringComparison.OrdinalIgnoreCase);
                                 
-                                <tr @(isVisible ? "" : "style=display:none")>
+                                <tr @(isVisible ? "" : "style=display:none") @(isGraded ? "class=table-secondary" : "")>
                                     <td>
                                         <input type="checkbox" 
                                                name="SelectedStudents[@i].IsSelected" 
                                                value="true" 
                                                class="form-check-input student-checkbox" 
-                                               @(student.IsSelected ? "checked" : "") 
+                                               @(student.IsSelected && !isGraded ? "checked" : "") 
+                                               @(isGraded ? "disabled" : "")
                                                @(isVisible ? "" : "style=display:none") />
                                         <input type="hidden" name="SelectedStudents[@i].StudentId" value="@student.StudentId" />
                                     </td>
-                                    <td><strong>@student.StudentName</strong></td>
+                                    <td>
+                                        <a href="@Url.Action("StudentProfile", "Home", new { id = student.StudentId })" 
+                                           target="_blank" 
+                                           class="text-decoration-none fw-bold">
+                                            @student.StudentName
+                                            <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.8em;"></i>
+                                        </a>
+                                    </td>
                                     <td>
                                         <span class="badge @GetStatusBadgeClass(student.CurrentStatus)">
                                             @(student.CurrentStatus ?? "No Status")
@@ -240,8 +251,9 @@
                                                placeholder="https://github.com/user/repo"
                                                pattern="https://github\.com/.+" 
                                                title="Please enter a valid GitHub repository URL"
+                                               @(isGraded ? "disabled readonly" : "")
                                                id="repo-@student.StudentId" />
-                                        <small class="text-muted d-block">GitHub repository URL (required for processing)</small>
+                                        <small class="text-muted d-block">@(isGraded ? "Already graded - cannot be modified" : "GitHub repository URL (required for processing)")</small>
                                     </td>
                                 </tr>
                             }
@@ -294,7 +306,7 @@
 @section Scripts {
     <script>
         function toggleAllCheckboxes(select) {
-            const checkboxes = document.querySelectorAll('.student-checkbox');
+            const checkboxes = document.querySelectorAll('.student-checkbox:not(:disabled)');
             checkboxes.forEach(checkbox => {
                 checkbox.checked = select;
             });
@@ -305,7 +317,7 @@
             const form = document.querySelector('form[action*="ProcessBulkGrading"]');
             if (form) {
                 form.addEventListener('submit', function(e) {
-                    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+                    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked:not(:disabled)');
                     if (checkedBoxes.length === 0) {
                         e.preventDefault();
                         alert('Please select at least one student to process.');

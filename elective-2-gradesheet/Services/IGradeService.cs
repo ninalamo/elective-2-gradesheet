@@ -728,11 +728,14 @@ namespace elective_2_gradesheet.Services
                             .FirstOrDefaultAsync(ss => ss.StudentId == submission.StudentId && 
                                                ss.ActivityTemplateId == request.ActivityTemplateId);
 
-                        // Skip if already has non-zero grades (as per requirements)
-                        if (existingSubmission != null && existingSubmission.Points > 0)
+                        // Skip if already graded or has non-zero grades (as per requirements)
+                        if (existingSubmission != null && 
+                            (existingSubmission.Status.Equals("Graded", StringComparison.OrdinalIgnoreCase) || existingSubmission.Points > 0))
                         {
                             result.Success = false;
-                            result.Message = "Student already has non-zero grade. Skipped.";
+                            result.Message = existingSubmission.Status.Equals("Graded", StringComparison.OrdinalIgnoreCase) 
+                                ? "Student already graded. Skipped."
+                                : "Student already has non-zero grade. Skipped.";
                             result.Points = existingSubmission.Points;
                             result.Status = existingSubmission.Status;
                             results.Add(result);
@@ -850,8 +853,9 @@ namespace elective_2_gradesheet.Services
             {
                 var existingSubmission = existingSubmissions.FirstOrDefault(es => es.StudentId == student.Id);
                 var hasNonZeroGrade = existingSubmission?.Points > 0;
-                var hasTurnedIn = existingSubmission?.Status == "Turned In";
+                var hasTurnedIn = existingSubmission?.Status == "Turned In" || existingSubmission?.Status == "Turned In Late";
                 var currentStatus = existingSubmission?.Status ?? "Missing";
+                var isGraded = currentStatus.Equals("Graded", StringComparison.OrdinalIgnoreCase);
                 
                 // Apply status filtering - show all students if no filters, otherwise check if status matches any filter
                 var isVisible = true;
@@ -862,7 +866,7 @@ namespace elective_2_gradesheet.Services
                                        statusFilters.Contains(currentStatus, StringComparer.OrdinalIgnoreCase);
                     
                     // Check if we should include graded entries
-                    var gradedMatches = includeGraded || !currentStatus.Equals("Graded", StringComparison.OrdinalIgnoreCase);
+                    var gradedMatches = includeGraded || !isGraded;
                     
                     isVisible = statusMatches && gradedMatches;
                 }
@@ -878,7 +882,7 @@ namespace elective_2_gradesheet.Services
                     SubmissionId = existingSubmission?.Id,
                     HasNonZeroGrade = hasNonZeroGrade,
                     HasTurnedIn = hasTurnedIn,
-                    IsSelected = !(hasNonZeroGrade && hasTurnedIn),
+                    IsSelected = !(isGraded || (hasNonZeroGrade && hasTurnedIn)),
                     IsVisible = isVisible
                 };
             }).ToList();
