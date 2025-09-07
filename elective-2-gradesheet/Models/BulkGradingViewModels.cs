@@ -12,8 +12,9 @@ namespace elective_2_gradesheet.Models
         public List<SelectListItem> ActivityTemplates { get; set; } = [];
         public List<BulkGradingStudentViewModel> Students { get; set; } = [];
         public string? ActivityTemplateName { get; set; }
-        public string? StatusFilter { get; set; }
+        public List<string> StatusFilters { get; set; } = []; // Changed from single string to list
         public List<SelectListItem> StatusOptions { get; set; } = [];
+        public bool IncludeGraded { get; set; } = false; // Separate checkbox for Graded, defaults to false
     }
 
     public class BulkGradingStudentViewModel

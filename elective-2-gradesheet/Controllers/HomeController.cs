@@ -694,25 +694,26 @@ namespace elective_2_gradesheet.Controllers
 
         // Bulk Grading Methods
         [HttpGet]
-        public async Task<IActionResult> BulkGrading(int? activityTemplateId = null, int? sectionId = null, string? statusFilter = null)
+        public async Task<IActionResult> BulkGrading(int? activityTemplateId = null, int? sectionId = null, List<string>? statusFilters = null, bool includeGraded = false)
         {
             var viewModel = new BulkGradingViewModel
             {
                 SectionId = sectionId,
                 ActivityTemplateId = activityTemplateId,
-                StatusFilter = statusFilter
+                StatusFilters = statusFilters ?? new List<string>(),
+                IncludeGraded = includeGraded
             };
             
-            // Define available status options
+            // Define available status options (excluding Graded as it has its own checkbox)
             viewModel.StatusOptions = new List<SelectListItem>
             {
-                new SelectListItem { Value = "", Text = "All Statuses", Selected = string.IsNullOrEmpty(statusFilter) },
-                new SelectListItem { Value = "Missing", Text = "Missing", Selected = statusFilter == "Missing" },
-                new SelectListItem { Value = "Not Started", Text = "Not Started", Selected = statusFilter == "Not Started" },
-                new SelectListItem { Value = "Completed", Text = "Completed", Selected = statusFilter == "Completed" },
-                new SelectListItem { Value = "Turned In", Text = "Turned In", Selected = statusFilter == "Turned In" },
-                new SelectListItem { Value = "Graded", Text = "Graded", Selected = statusFilter == "Graded" },
-                new SelectListItem { Value = "Error", Text = "Error", Selected = statusFilter == "Error" }
+                new SelectListItem { Value = "Missing", Text = "Missing", Selected = statusFilters?.Contains("Missing") == true },
+                new SelectListItem { Value = "Not Started", Text = "Not Started", Selected = statusFilters?.Contains("Not Started") == true },
+                new SelectListItem { Value = "Completed", Text = "Completed", Selected = statusFilters?.Contains("Completed") == true },
+                new SelectListItem { Value = "Turned In", Text = "Turned In", Selected = statusFilters?.Contains("Turned In") == true },
+                new SelectListItem { Value = "Not Turned In", Text = "Not Turned In", Selected = statusFilters?.Contains("Not Turned In") == true },
+                new SelectListItem { Value = "Viewed", Text = "Viewed", Selected = statusFilters?.Contains("Viewed") == true },
+                new SelectListItem { Value = "Error", Text = "Error", Selected = statusFilters?.Contains("Error") == true }
             };
             
             // Load sections
@@ -748,7 +749,7 @@ namespace elective_2_gradesheet.Controllers
             {
                 try
                 {
-                    var bulkGradingData = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, statusFilter);
+                    var bulkGradingData = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, statusFilters, includeGraded);
                     viewModel.Students = bulkGradingData.Students;
                     viewModel.ActivityTemplateName = bulkGradingData.ActivityTemplateName;
                 }
@@ -849,6 +850,29 @@ namespace elective_2_gradesheet.Controllers
                 {
                     try
                     {
+                        // Get student info first to check status
+                        var studentEntity = await _gradeService.GetStudentsBySectionAsync(model.SectionId);
+                        var studentInfo = studentEntity.FirstOrDefault(s => s.Id == student.StudentId);
+                        
+                        if (studentInfo == null)
+                        {
+                            errorCount++;
+                            results.Add($"✗ Student ID {student.StudentId}: Student not found");
+                            continue;
+                        }
+                        
+                        // Check if student has existing submission and skip certain statuses
+                        var bulkGradingData = await _gradeService.InitializeBulkGradingAsync(model.ActivityTemplateId, model.SectionId);
+                        var studentSubmission = bulkGradingData.Students.FirstOrDefault(s => s.StudentId == student.StudentId);
+                        
+                        // Skip students with certain statuses
+                        var skipStatuses = new[] { "Graded", "Not Turned In", "Viewed" };
+                        if (studentSubmission != null && skipStatuses.Contains(studentSubmission.CurrentStatus, StringComparer.OrdinalIgnoreCase))
+                        {
+                            results.Add($"🔶 {studentInfo.GetFullName()}: Skipped! (Status: {studentSubmission.CurrentStatus})");
+                            continue;
+                        }
+                        
                         // Create a simplified bulk request for this single student
                         var singleStudentRequest = new BulkGradingRequest
                         {
@@ -863,17 +887,6 @@ namespace elective_2_gradesheet.Controllers
                                 }
                             }
                         };
-                        
-                        // Process this student with actual repository cloning and scoring
-                        var studentEntity = await _gradeService.GetStudentsBySectionAsync(model.SectionId);
-                        var studentInfo = studentEntity.FirstOrDefault(s => s.Id == student.StudentId);
-                        
-                        if (studentInfo == null)
-                        {
-                            errorCount++;
-                            results.Add($"✗ Student ID {student.StudentId}: Student not found");
-                            continue;
-                        }
                         
                         try
                         {

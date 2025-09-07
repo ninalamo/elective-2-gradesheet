@@ -30,7 +30,7 @@ namespace elective_2_gradesheet.Services
         Task<(bool success, string message, List<BulkGradingResult> results)> ProcessBulkGradingAsync(BulkGradingRequest request);
         
         // Enhanced bulk grading methods
-        Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, string? statusFilter = null);
+        Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, List<string>? statusFilters = null, bool includeGraded = false);
         Task<string> StartBulkProcessingAsync(int activityTemplateId, int sectionId, List<int> selectedStudentIds, bool showNonZeroGrades);
         BulkGradingProgressUpdate? GetBulkProcessingProgress(string sessionId);
         BulkGradingSession? GetBulkProcessingSession(string sessionId);
@@ -827,7 +827,7 @@ namespace elective_2_gradesheet.Services
         }
 
         // Enhanced bulk grading methods (SQL Server implementation)
-        public async Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, string? statusFilter = null)
+        public async Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, List<string>? statusFilters = null, bool includeGraded = false)
         {
             var activityTemplate = await _context.ActivityTemplates
                 .FirstOrDefaultAsync(at => at.Id == activityTemplateId);
@@ -853,9 +853,19 @@ namespace elective_2_gradesheet.Services
                 var hasTurnedIn = existingSubmission?.Status == "Turned In";
                 var currentStatus = existingSubmission?.Status ?? "Missing";
                 
-                // Apply status filtering - show all students, filter only by status if specified
-                var isVisible = string.IsNullOrEmpty(statusFilter) || 
-                               currentStatus.Equals(statusFilter, StringComparison.OrdinalIgnoreCase);
+                // Apply status filtering - show all students if no filters, otherwise check if status matches any filter
+                var isVisible = true;
+                if (statusFilters?.Any() == true || !includeGraded)
+                {
+                    // Check if current status matches any of the selected status filters
+                    var statusMatches = statusFilters?.Any() != true || 
+                                       statusFilters.Contains(currentStatus, StringComparer.OrdinalIgnoreCase);
+                    
+                    // Check if we should include graded entries
+                    var gradedMatches = includeGraded || !currentStatus.Equals("Graded", StringComparison.OrdinalIgnoreCase);
+                    
+                    isVisible = statusMatches && gradedMatches;
+                }
 
                 return new BulkGradingStudentViewModel
                 {
@@ -878,7 +888,9 @@ namespace elective_2_gradesheet.Services
                 ActivityTemplateId = activityTemplateId,
                 ActivityTemplateName = activityTemplate.Name,
                 SectionId = sectionId,
-                Students = studentViewModels
+                Students = studentViewModels,
+                StatusFilters = statusFilters ?? new List<string>(),
+                IncludeGraded = includeGraded
             };
         }
 

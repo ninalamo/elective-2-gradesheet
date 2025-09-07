@@ -12,8 +12,12 @@
         {
             "turned in" => "bg-success",
             "completed" => "bg-success",
+            "graded" => "bg-primary",
             "not turned in" => "bg-danger",
+            "viewed" => "bg-info",
             "missing" => "bg-secondary",
+            "not started" => "bg-warning",
+            "error" => "bg-danger",
             _ => "bg-secondary"
         };
     }
@@ -111,21 +115,49 @@
                 }
                 
                 <div class="row mt-3">
-                    <div class="col-md-6">
+                    <div class="col-md-8">
                         <div class="form-group">
-                            <label for="statusFilter"><i class="fas fa-filter"></i> Filter by Status:</label>
-                            <select name="statusFilter" class="form-select" onchange="this.form.submit()">
-                                @if (Model.StatusOptions != null)
-                                {
-                                    @foreach (var statusOption in Model.StatusOptions)
-                                    {
-                                        <option value="@(statusOption.Value)" selected="@statusOption.Selected">
-                                            @(statusOption.Text)
-                                        </option>
-                                    }
-                                }
-                            </select>
-                            <small class="text-muted">Filter students by their current submission status</small>
+                            <label><i class="fas fa-filter"></i> Filter by Status:</label>
+                            <div class="row mt-2">
+                                <div class="col-md-8">
+                                    <div class="d-flex flex-wrap gap-3">
+                                        @if (Model.StatusOptions != null)
+                                        {
+                                            @foreach (var statusOption in Model.StatusOptions)
+                                            {
+                                                <div class="form-check">
+                                                    <input class="form-check-input status-filter-checkbox" 
+                                                           type="checkbox" 
+                                                           name="statusFilters" 
+                                                           value="@statusOption.Value" 
+                                                           id="status_@statusOption.Value.Replace(" ", "_")" 
+                                                           @(statusOption.Selected ? "checked" : "")
+                                                           onchange="this.form.submit()">
+                                                    <label class="form-check-label" for="status_@statusOption.Value.Replace(" ", "_")">
+                                                        @statusOption.Text
+                                                    </label>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                    <small class="text-muted">Select which statuses to show (leave unchecked to show all)</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               name="includeGraded" 
+                                               value="true" 
+                                               id="includeGraded" 
+                                               @(Model.IncludeGraded ? "checked" : "")
+                                               onchange="this.form.submit()">
+                                        <label class="form-check-label" for="includeGraded">
+                                            <i class="fas fa-check-circle text-success"></i> Include Graded
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">Check to include students with 'Graded' status</small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -331,17 +363,23 @@
             const errorCount = results.ErrorCount;
             const totalCount = results.TotalCount;
             
+            // Count skipped entries
+            const skippedCount = results.Results.filter(r => r.Message.includes('Skipped!')).length;
+            
             let html = `
                 <div class="alert ${successCount > 0 ? 'alert-success' : 'alert-danger'}">
                     <h6><i class="fas fa-chart-pie"></i> Summary</h6>
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <strong>Processed:</strong> ${successCount}/${totalCount}
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <strong>Successful:</strong> ${successCount}
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
+                            <strong>Skipped:</strong> ${skippedCount}
+                        </div>
+                        <div class="col-md-3">
                             <strong>Errors:</strong> ${errorCount}
                         </div>
                     </div>
@@ -353,8 +391,18 @@
             `;
             
             results.Results.forEach(function(result) {
-                const iconClass = result.IsSuccess ? 'fa-check text-success' : 'fa-times text-danger';
-                const bgClass = result.IsSuccess ? 'list-group-item-success' : 'list-group-item-danger';
+                let iconClass, bgClass;
+                
+                if (result.Message.includes('Skipped!')) {
+                    iconClass = 'fa-exclamation-triangle text-warning';
+                    bgClass = 'list-group-item-warning';
+                } else if (result.IsSuccess) {
+                    iconClass = 'fa-check text-success';
+                    bgClass = 'list-group-item-success';
+                } else {
+                    iconClass = 'fa-times text-danger';
+                    bgClass = 'list-group-item-danger';
+                }
                 
                 html += `
                     <div class="list-group-item ${bgClass}">
