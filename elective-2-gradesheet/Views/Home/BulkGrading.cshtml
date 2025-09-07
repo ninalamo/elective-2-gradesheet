@@ -117,6 +117,15 @@
                 }
                 
                 <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="searchTerm"><i class="fas fa-search"></i> Search Student:</label>
+                            <input type="text" name="searchTerm" id="searchTerm" class="form-control" 
+                                   value="@Model.SearchTerm" placeholder="Search by name or student number"
+                                   onchange="this.form.submit()">
+                            <small class="text-muted">Search by student name or student number</small>
+                        </div>
+                    </div>
                     <div class="col-md-8">
                         <div class="form-group">
                             <label><i class="fas fa-filter"></i> Filter by Status:</label>
@@ -204,6 +213,7 @@
                         <thead>
                             <tr>
                                 <th width="40">Select</th>
+                                <th>Student Number</th>
                                 <th>Student Name</th>
                                 <th>Current Status</th>
                                 <th>Current Points</th>
@@ -228,6 +238,9 @@
                                                @(isGraded ? "disabled" : "")
                                                @(isVisible ? "" : "style=display:none") />
                                         <input type="hidden" name="SelectedStudents[@i].StudentId" value="@student.StudentId" />
+                                    </td>
+                                    <td>
+                                        <strong>@student.StudentNumber</strong>
                                     </td>
                                     <td>
                                         <a href="@Url.Action("StudentProfile", "Home", new { id = student.StudentId })" 

@@ -30,7 +30,7 @@ namespace elective_2_gradesheet.Services
         Task<(bool success, string message, List<BulkGradingResult> results)> ProcessBulkGradingAsync(BulkGradingRequest request);
         
         // Enhanced bulk grading methods
-        Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, List<string>? statusFilters = null, bool includeGraded = false);
+        Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, List<string>? statusFilters = null, bool includeGraded = false, string? searchTerm = null);
         Task<string> StartBulkProcessingAsync(int activityTemplateId, int sectionId, List<int> selectedStudentIds, bool showNonZeroGrades);
         BulkGradingProgressUpdate? GetBulkProcessingProgress(string sessionId);
         BulkGradingSession? GetBulkProcessingSession(string sessionId);
@@ -830,7 +830,7 @@ namespace elective_2_gradesheet.Services
         }
 
         // Enhanced bulk grading methods (SQL Server implementation)
-        public async Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, List<string>? statusFilters = null, bool includeGraded = false)
+        public async Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, List<string>? statusFilters = null, bool includeGraded = false, string? searchTerm = null)
         {
             var activityTemplate = await _context.ActivityTemplates
                 .FirstOrDefaultAsync(at => at.Id == activityTemplateId);
@@ -838,8 +838,21 @@ namespace elective_2_gradesheet.Services
             if (activityTemplate == null)
                 throw new ArgumentException($"Activity template with ID {activityTemplateId} not found");
 
-            var students = await _context.Students
-                .Where(s => s.SectionId == sectionId)
+            var studentsQuery = _context.Students
+                .Where(s => s.SectionId == sectionId);
+
+            // Apply search filter if provided
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                studentsQuery = studentsQuery.Where(s => 
+                    s.FirstName.Contains(searchTerm) ||
+                    s.LastName.Contains(searchTerm) ||
+                    s.Email.Contains(searchTerm) ||
+                    (s.FirstName + " " + s.LastName).Contains(searchTerm) ||
+                    (s.LastName + ", " + s.FirstName).Contains(searchTerm));
+            }
+
+            var students = await studentsQuery
                 .OrderBy(s => s.LastName)
                 .ThenBy(s => s.FirstName)
                 .ToListAsync();
@@ -875,6 +888,7 @@ namespace elective_2_gradesheet.Services
                 {
                     StudentId = student.Id,
                     StudentName = $"{student.LastName}, {student.FirstName}",
+                    StudentNumber = student.GetStudentNumber(),
                     RepositoryUrl = existingSubmission?.GithubLink,
                     CurrentPoints = existingSubmission?.Points,
                     CurrentStatus = currentStatus,

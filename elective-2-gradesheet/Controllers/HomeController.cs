@@ -694,14 +694,15 @@ namespace elective_2_gradesheet.Controllers
 
         // Bulk Grading Methods
         [HttpGet]
-        public async Task<IActionResult> BulkGrading(int? activityTemplateId = null, int? sectionId = null, List<string>? statusFilters = null, bool includeGraded = false)
+        public async Task<IActionResult> BulkGrading(int? activityTemplateId = null, int? sectionId = null, List<string>? statusFilters = null, bool includeGraded = false, string? searchTerm = null)
         {
             var viewModel = new BulkGradingViewModel
             {
                 SectionId = sectionId,
                 ActivityTemplateId = activityTemplateId,
                 StatusFilters = statusFilters ?? new List<string>(),
-                IncludeGraded = includeGraded
+                IncludeGraded = includeGraded,
+                SearchTerm = searchTerm
             };
             
             // Define available status options (excluding Graded as it has its own checkbox)
@@ -749,7 +750,7 @@ namespace elective_2_gradesheet.Controllers
             {
                 try
                 {
-                    var bulkGradingData = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, statusFilters, includeGraded);
+                    var bulkGradingData = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, statusFilters, includeGraded, searchTerm);
                     viewModel.Students = bulkGradingData.Students;
                     viewModel.ActivityTemplateName = bulkGradingData.ActivityTemplateName;
                 }

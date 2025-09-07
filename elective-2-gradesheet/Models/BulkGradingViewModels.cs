@@ -15,6 +15,7 @@ namespace elective_2_gradesheet.Models
         public List<string> StatusFilters { get; set; } = []; // Changed from single string to list
         public List<SelectListItem> StatusOptions { get; set; } = [];
         public bool IncludeGraded { get; set; } = false; // Separate checkbox for Graded, defaults to false
+        public string? SearchTerm { get; set; } // Add search functionality
     }
 
     public class BulkGradingStudentViewModel
@@ -24,6 +25,9 @@ namespace elective_2_gradesheet.Models
         
         [JsonPropertyName("studentName")]
         public string StudentName { get; set; } = string.Empty;
+        
+        [JsonPropertyName("studentNumber")]
+        public string StudentNumber { get; set; } = string.Empty;
         
         [JsonPropertyName("repositoryUrl")]
         public string? RepositoryUrl { get; set; }
