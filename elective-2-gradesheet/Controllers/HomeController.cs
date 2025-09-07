@@ -694,13 +694,12 @@ namespace elective_2_gradesheet.Controllers
 
         // Bulk Grading Methods
         [HttpGet]
-        public async Task<IActionResult> BulkGrading(int? activityTemplateId = null, int? sectionId = null, bool showNonZeroGrades = false, string? statusFilter = null)
+        public async Task<IActionResult> BulkGrading(int? activityTemplateId = null, int? sectionId = null, string? statusFilter = null)
         {
             var viewModel = new BulkGradingViewModel
             {
                 SectionId = sectionId,
                 ActivityTemplateId = activityTemplateId,
-                ShowNonZeroGrades = showNonZeroGrades,
                 StatusFilter = statusFilter
             };
             
@@ -749,7 +748,7 @@ namespace elective_2_gradesheet.Controllers
             {
                 try
                 {
-                    var bulkGradingData = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, showNonZeroGrades, statusFilter);
+                    var bulkGradingData = await _gradeService.InitializeBulkGradingAsync(activityTemplateId.Value, sectionId.Value, statusFilter);
                     viewModel.Students = bulkGradingData.Students;
                     viewModel.ActivityTemplateName = bulkGradingData.ActivityTemplateName;
                 }
@@ -912,7 +911,7 @@ namespace elective_2_gradesheet.Controllers
                                 "Assignment",  // Tag
                                 "",           // Other tag
                                 student.RepositoryUrl, 
-                                "Turned In",  // Status
+                                "Graded",     // Status - changed from "Turned In" to "Graded"
                                 null,         // activityId - let it find by name
                                 selectedActivity.Name
                             );
@@ -920,7 +919,7 @@ namespace elective_2_gradesheet.Controllers
                             Console.WriteLine($"Successfully saved grade for {studentInfo.GetFullName()}");
                             
                             processedCount++;
-                            results.Add($"✓ {studentInfo.GetFullName()}: {scoreResult.totalScore}/{selectedActivity.MaxPoints} points - Turned In");
+                            results.Add($"✓ {studentInfo.GetFullName()}: {scoreResult.totalScore}/{selectedActivity.MaxPoints} points - Graded");
                             
                             // Cleanup cloned directory
                             try { Directory.Delete(cloneResult.ClonedDirectory, true); } catch { }

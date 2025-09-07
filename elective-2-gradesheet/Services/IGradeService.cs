@@ -30,7 +30,7 @@ namespace elective_2_gradesheet.Services
         Task<(bool success, string message, List<BulkGradingResult> results)> ProcessBulkGradingAsync(BulkGradingRequest request);
         
         // Enhanced bulk grading methods
-        Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, bool showNonZeroGrades = false, string? statusFilter = null);
+        Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, string? statusFilter = null);
         Task<string> StartBulkProcessingAsync(int activityTemplateId, int sectionId, List<int> selectedStudentIds, bool showNonZeroGrades);
         BulkGradingProgressUpdate? GetBulkProcessingProgress(string sessionId);
         BulkGradingSession? GetBulkProcessingSession(string sessionId);
@@ -827,7 +827,7 @@ namespace elective_2_gradesheet.Services
         }
 
         // Enhanced bulk grading methods (SQL Server implementation)
-        public async Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, bool showNonZeroGrades = false, string? statusFilter = null)
+        public async Task<BulkGradingViewModel> InitializeBulkGradingAsync(int activityTemplateId, int sectionId, string? statusFilter = null)
         {
             var activityTemplate = await _context.ActivityTemplates
                 .FirstOrDefaultAsync(at => at.Id == activityTemplateId);
@@ -853,9 +853,9 @@ namespace elective_2_gradesheet.Services
                 var hasTurnedIn = existingSubmission?.Status == "Turned In";
                 var currentStatus = existingSubmission?.Status ?? "Missing";
                 
-                // Apply status filtering
-                var matchesStatusFilter = string.IsNullOrEmpty(statusFilter) || 
-                                         currentStatus.Equals(statusFilter, StringComparison.OrdinalIgnoreCase);
+                // Apply status filtering - show all students, filter only by status if specified
+                var isVisible = string.IsNullOrEmpty(statusFilter) || 
+                               currentStatus.Equals(statusFilter, StringComparison.OrdinalIgnoreCase);
 
                 return new BulkGradingStudentViewModel
                 {
@@ -869,7 +869,7 @@ namespace elective_2_gradesheet.Services
                     HasNonZeroGrade = hasNonZeroGrade,
                     HasTurnedIn = hasTurnedIn,
                     IsSelected = !(hasNonZeroGrade && hasTurnedIn),
-                    IsVisible = (showNonZeroGrades || !hasNonZeroGrade) && matchesStatusFilter
+                    IsVisible = isVisible
                 };
             }).ToList();
 
@@ -878,8 +878,7 @@ namespace elective_2_gradesheet.Services
                 ActivityTemplateId = activityTemplateId,
                 ActivityTemplateName = activityTemplate.Name,
                 SectionId = sectionId,
-                Students = studentViewModels,
-                ShowNonZeroGrades = showNonZeroGrades
+                Students = studentViewModels
             };
         }
 

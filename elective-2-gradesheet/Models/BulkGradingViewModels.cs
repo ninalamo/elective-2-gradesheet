@@ -12,7 +12,6 @@ namespace elective_2_gradesheet.Models
         public List<SelectListItem> ActivityTemplates { get; set; } = [];
         public List<BulkGradingStudentViewModel> Students { get; set; } = [];
         public string? ActivityTemplateName { get; set; }
-        public bool ShowNonZeroGrades { get; set; }
         public string? StatusFilter { get; set; }
         public List<SelectListItem> StatusOptions { get; set; } = [];
     }
