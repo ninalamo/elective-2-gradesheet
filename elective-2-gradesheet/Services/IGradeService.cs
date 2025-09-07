@@ -844,12 +844,13 @@ namespace elective_2_gradesheet.Services
             // Apply search filter if provided
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
+                var searchTermLower = searchTerm.ToLower();
                 studentsQuery = studentsQuery.Where(s => 
-                    s.FirstName.Contains(searchTerm) ||
-                    s.LastName.Contains(searchTerm) ||
-                    s.Email.Contains(searchTerm) ||
-                    (s.FirstName + " " + s.LastName).Contains(searchTerm) ||
-                    (s.LastName + ", " + s.FirstName).Contains(searchTerm));
+                    s.FirstName.ToLower().Contains(searchTermLower) ||
+                    s.LastName.ToLower().Contains(searchTermLower) ||
+                    s.Email.ToLower().Contains(searchTermLower) ||
+                    (s.FirstName + " " + s.LastName).ToLower().Contains(searchTermLower) ||
+                    (s.LastName + ", " + s.FirstName).ToLower().Contains(searchTermLower));
             }
 
             var students = await studentsQuery
