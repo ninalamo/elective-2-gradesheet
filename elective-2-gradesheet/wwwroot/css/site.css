@@ -628,3 +628,105 @@ h6 { font-size: 1rem; }
 .fw-bold {
     font-weight: 600 !important;
 }
+
+/* Full Width Layout Optimization */
+.container-fluid {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Responsive container adjustments */
+@media (min-width: 576px) {
+    .container-fluid {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+}
+
+@media (min-width: 992px) {
+    .container-fluid {
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+}
+
+@media (min-width: 1400px) {
+    .container-fluid {
+        padding-left: 2.5rem;
+        padding-right: 2.5rem;
+    }
+}
+
+@media (max-width: 575px) {
+    .container-fluid {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+}
+
+/* Enhanced table responsiveness */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Optimize table for wide screens */
+@media (min-width: 1200px) {
+    .table {
+        font-size: 0.9rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.75rem 0.5rem;
+    }
+}
+
+@media (min-width: 1400px) {
+    .table {
+        font-size: 1rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 1rem 0.75rem;
+    }
+}
+
+/* Cards optimization for wide screens */
+.card {
+    width: 100%;
+}
+
+/* Row and column spacing optimization */
+.row {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+}
+
+.row > * {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+@media (min-width: 992px) {
+    .row {
+        margin-left: -0.75rem;
+        margin-right: -0.75rem;
+    }
+    
+    .row > * {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+}
+
+/* Navbar full width optimization */
+.navbar .container-fluid {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}

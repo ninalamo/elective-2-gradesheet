@@ -1241,6 +1241,48 @@ namespace elective_2_gradesheet.Controllers
             }
         }
 
+        // Grade Summary Methods
+        public async Task<IActionResult> GradeSummary(GradingPeriod? period = null, int? sectionId = null)
+        {
+            var sections = await _gradeService.GetActiveSectionsAsync();
+            ViewBag.Sections = sections.Select(s => new SelectListItem
+            {
+                Value = s.Id.ToString(),
+                Text = s.Name,
+                Selected = s.Id == sectionId
+            }).ToList();
+
+            var viewModel = await _gradeService.GetGradeSummaryAsync(period, sectionId);
+            return View(viewModel);
+        }
+
+        public async Task<IActionResult> ExportGradesToExcel(GradingPeriod? period = null, int? sectionId = null)
+        {
+            try
+            {
+                var excelData = await _gradeService.ExportGradesToExcelAsync(period, sectionId);
+                
+                var fileName = "GradesSummary";
+                if (period.HasValue)
+                    fileName += $"_{period.Value}";
+                if (sectionId.HasValue)
+                {
+                    var sections = await _gradeService.GetActiveSectionsAsync();
+                    var section = sections.FirstOrDefault(s => s.Id == sectionId.Value);
+                    if (section != null)
+                        fileName += $"_{section.Name.Replace(" ", "_")}";
+                }
+                fileName += $"_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+
+                return File(excelData, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"Error generating Excel file: {ex.Message}";
+                return RedirectToAction("GradeSummary", new { period, sectionId });
+            }
+        }
+
     }
 
 }

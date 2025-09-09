@@ -7,6 +7,8 @@ using System.Text.RegularExpressions;
 using System.Text.Json;
 using elective_2_gradesheet.Controllers;
 using System.Collections.Concurrent;
+using OfficeOpenXml;
+using OfficeOpenXml.Style;
 
 namespace elective_2_gradesheet.Services
 {
@@ -39,6 +41,10 @@ namespace elective_2_gradesheet.Services
         Task<bool> SaveBulkGradingResultsAsync(string sessionId);
         void CleanupBulkGradingSession(string sessionId);
         Task SaveRepositoryUrlsAsync(int activityTemplateId, List<BulkProcessingStudent> students);
+        
+        // Grade Summary methods
+        Task<GradeSummaryViewModel> GetGradeSummaryAsync(GradingPeriod? period = null, int? sectionId = null);
+        Task<byte[]> ExportGradesToExcelAsync(GradingPeriod? period = null, int? sectionId = null);
     }
 
     public class GradeDbService : IGradeService
@@ -1132,6 +1138,230 @@ namespace elective_2_gradesheet.Services
             }
             
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<GradeSummaryViewModel> GetGradeSummaryAsync(GradingPeriod? period = null, int? sectionId = null)
+        {
+            var sectionsQuery = _context.Sections
+                .Include(s => s.Students)
+                .Include(s => s.ActivityTemplates)
+                .Where(s => s.IsActive && (!sectionId.HasValue || s.Id == sectionId.Value));
+
+            var sections = await sectionsQuery.ToListAsync();
+            var sectionSummaries = new List<SectionSummary>();
+
+            foreach (var section in sections)
+            {
+                // Filter activity templates by period if specified
+                var activityTemplates = section.ActivityTemplates
+                    .Where(at => at.IsActive && (!period.HasValue || at.Period == period.Value))
+                    .ToList();
+
+                if (!activityTemplates.Any())
+                    continue;
+
+                // Get student IDs for this section
+                var studentIds = section.Students.Select(s => s.Id).ToList();
+
+                // Get all submissions for students in this section
+                var studentSubmissions = await _context.StudentSubmissions
+                    .Include(ss => ss.ActivityTemplate)
+                    .Where(ss => studentIds.Contains(ss.StudentId) &&
+                                (!period.HasValue || ss.ActivityTemplate.Period == period.Value))
+                    .ToListAsync();
+
+                var studentSummaries = new List<StudentGradeSummary>();
+                var activityNames = activityTemplates
+                    .OrderBy(at => at.Period)
+                    .ThenBy(at => at.Name)
+                    .Select(at => at.Name)
+                    .ToList();
+
+                foreach (var student in section.Students.OrderBy(s => s.LastName).ThenBy(s => s.FirstName))
+                {
+                    var studentActivities = new List<ActivityGradeSummary>();
+                    var totalPoints = 0.0;
+                    var totalMaxPoints = 0.0;
+
+                    foreach (var template in activityTemplates)
+                    {
+                        var submission = studentSubmissions
+                            .FirstOrDefault(ss => ss.StudentId == student.Id && ss.ActivityTemplateId == template.Id);
+
+                        var points = submission?.Points ?? 0;
+                        var maxPoints = template.MaxPoints;
+                        var percentage = maxPoints > 0 ? (points / maxPoints) * 100 : 0;
+
+                        studentActivities.Add(new ActivityGradeSummary
+                        {
+                            ActivityId = submission?.Id ?? 0,
+                            ActivityName = template.Name,
+                            Points = points,
+                            MaxPoints = maxPoints,
+                            Percentage = percentage,
+                            Status = submission?.Status ?? "Missing",
+                            Period = template.Period,
+                            Tag = template.Tag ?? "N/A"
+                        });
+
+                        totalPoints += points;
+                        totalMaxPoints += maxPoints;
+                    }
+
+                    var overallPercentage = totalMaxPoints > 0 ? (totalPoints / totalMaxPoints) * 100 : 0;
+                    var overallGrade = GetLetterGrade(overallPercentage);
+
+                    studentSummaries.Add(new StudentGradeSummary
+                    {
+                        StudentId = student.Id,
+                        StudentNumber = student.GetStudentNumber(),
+                        StudentFullName = student.GetFullName(),
+                        SectionName = section.Name,
+                        Activities = studentActivities,
+                        TotalPoints = totalPoints,
+                        TotalMaxPoints = totalMaxPoints,
+                        OverallPercentage = overallPercentage,
+                        OverallGrade = overallGrade
+                    });
+                }
+
+                var sectionAverage = studentSummaries.Any() ? studentSummaries.Average(s => s.OverallPercentage) : 0;
+
+                sectionSummaries.Add(new SectionSummary
+                {
+                    SectionId = section.Id,
+                    SectionName = section.Name,
+                    SchoolYear = section.SchoolYear,
+                    Students = studentSummaries,
+                    ActivityNames = activityNames,
+                    SectionAverage = sectionAverage
+                });
+            }
+
+            return new GradeSummaryViewModel
+            {
+                Sections = sectionSummaries,
+                TotalStudents = sectionSummaries.Sum(s => s.Students.Count),
+                TotalActivities = sectionSummaries.FirstOrDefault()?.ActivityNames.Count ?? 0,
+                FilterPeriod = period,
+                FilterSectionId = sectionId
+            };
+        }
+
+        public async Task<byte[]> ExportGradesToExcelAsync(GradingPeriod? period = null, int? sectionId = null)
+        {
+            // Set EPPlus license context
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+
+            var summaryData = await GetGradeSummaryAsync(period, sectionId);
+
+            using var package = new ExcelPackage();
+
+            foreach (var section in summaryData.Sections)
+            {
+                var worksheet = package.Workbook.Worksheets.Add($"{section.SectionName}");
+
+                // Add headers
+                var col = 1;
+                worksheet.Cells[1, col++].Value = "Student Number";
+                worksheet.Cells[1, col++].Value = "Student Name";
+
+                // Add activity columns
+                var activityStartCol = col;
+                foreach (var activityName in section.ActivityNames)
+                {
+                    worksheet.Cells[1, col].Value = activityName + " (Points)";
+                    worksheet.Cells[2, col].Value = "Max Points";
+                    col++;
+                    worksheet.Cells[1, col].Value = activityName + " (%)";
+                    worksheet.Cells[2, col].Value = "Percentage";
+                    col++;
+                }
+
+                worksheet.Cells[1, col++].Value = "Total Points";
+                worksheet.Cells[1, col++].Value = "Total Max Points";
+                worksheet.Cells[1, col++].Value = "Overall %";
+                worksheet.Cells[1, col++].Value = "Grade";
+
+                // Style the header row
+                var headerRange = worksheet.Cells[1, 1, 1, col - 1];
+                headerRange.Style.Font.Bold = true;
+                headerRange.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                headerRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightBlue);
+                headerRange.Style.Border.BorderAround(ExcelBorderStyle.Thick);
+
+                // Add max points row for activities
+                col = activityStartCol;
+                foreach (var activityName in section.ActivityNames)
+                {
+                    var maxPoints = section.Students.FirstOrDefault()?
+                        .Activities.FirstOrDefault(a => a.ActivityName == activityName)?.MaxPoints ?? 0;
+                    worksheet.Cells[2, col].Value = maxPoints;
+                    col += 2; // Skip percentage column
+                }
+
+                // Add student data
+                var row = 3;
+                foreach (var student in section.Students)
+                {
+                    col = 1;
+                    worksheet.Cells[row, col++].Value = student.StudentNumber;
+                    worksheet.Cells[row, col++].Value = student.StudentFullName;
+
+                    // Add activity scores
+                    foreach (var activityName in section.ActivityNames)
+                    {
+                        var activity = student.Activities.FirstOrDefault(a => a.ActivityName == activityName);
+                        worksheet.Cells[row, col++].Value = activity?.Points ?? 0;
+                        worksheet.Cells[row, col++].Value = Math.Round(activity?.Percentage ?? 0, 2);
+                    }
+
+                    worksheet.Cells[row, col++].Value = student.TotalPoints;
+                    worksheet.Cells[row, col++].Value = student.TotalMaxPoints;
+                    worksheet.Cells[row, col++].Value = Math.Round(student.OverallPercentage, 2);
+                    worksheet.Cells[row, col++].Value = student.OverallGrade;
+                    row++;
+                }
+
+                // Add section average row
+                worksheet.Cells[row + 1, 1].Value = "Section Average";
+                worksheet.Cells[row + 1, col - 2].Value = Math.Round(section.SectionAverage, 2);
+                var avgRange = worksheet.Cells[row + 1, 1, row + 1, col - 1];
+                avgRange.Style.Font.Bold = true;
+                avgRange.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                avgRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightYellow);
+
+                // Auto-fit columns
+                worksheet.Cells.AutoFitColumns();
+
+                // Add borders to all data
+                var dataRange = worksheet.Cells[1, 1, row + 1, col - 1];
+                dataRange.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+                dataRange.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+                dataRange.Style.Border.Right.Style = ExcelBorderStyle.Thin;
+                dataRange.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+            }
+
+            return await package.GetAsByteArrayAsync();
+        }
+
+        private string GetLetterGrade(double percentage)
+        {
+            return percentage switch
+            {
+                >= 97 => "A+",
+                >= 93 => "A",
+                >= 90 => "A-",
+                >= 87 => "B+",
+                >= 83 => "B",
+                >= 80 => "B-",
+                >= 77 => "C+",
+                >= 73 => "C",
+                >= 70 => "C-",
+                >= 67 => "D+",
+                >= 65 => "D",
+                _ => "F"
+            };
         }
     }
 }

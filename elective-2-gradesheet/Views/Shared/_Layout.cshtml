@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="~/elective_2_gradesheet.styles.css" asp-append-version="true" />
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
     <header>
@@ -32,6 +33,11 @@
                         <li class="nav-item">
                             <a class="nav-link text-white" asp-area="" asp-controller="Home" asp-action="Records">
                                 <i class="fas fa-list-alt me-1"></i> View Records
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white" asp-area="" asp-controller="Home" asp-action="GradeSummary">
+                                <i class="fas fa-chart-line me-1"></i> Grades Summary
                             </a>
                         </li>
                         <li class="nav-item">
@@ -59,14 +65,14 @@
             </div>
         </nav>
     </header>
-    <div class="container">
+    <div class="container-fluid">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
     </div>
 
     <footer class="border-top footer text-muted mt-5">
-        <div class="container">
+        <div class="container-fluid">
             &copy; 2025 - GradeSheet - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>

@@ -1,0 +1,313 @@
+@model elective_2_gradesheet.Models.GradeSummaryViewModel
+@using elective_2_gradesheet.Data.Entities
+
+@{
+    ViewData["Title"] = "Grades Summary";
+}
+
+@functions {
+    string GetGradeClass(double percentage)
+    {
+        return percentage switch
+        {
+            >= 90 => "table-success",
+            >= 80 => "table-info",
+            >= 70 => "table-warning",
+            >= 60 => "table-warning",
+            _ => "table-danger"
+        };
+    }
+    
+    string GetStatusBadgeClass(string status)
+    {
+        return status?.ToLower() switch
+        {
+            "graded" => "bg-success",
+            "completed" => "bg-success", 
+            "turned in" => "bg-primary",
+            "turned in late" => "bg-warning",
+            "not turned in" => "bg-danger",
+            "missing" => "bg-secondary",
+            "not started" => "bg-light text-dark",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="mb-3">
+                <i class="fas fa-chart-line text-primary"></i> Grades Summary
+            </h1>
+            <p class="text-muted">
+                <i class="fas fa-users me-2"></i>Total Students: <strong>@Model.TotalStudents</strong>
+                <i class="fas fa-tasks ms-3 me-2"></i>Total Activities: <strong>@Model.TotalActivities</strong>
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a asp-action="ExportGradesToExcel" 
+               asp-route-period="@Model.FilterPeriod" 
+               asp-route-sectionId="@Model.FilterSectionId" 
+               class="btn btn-success btn-lg">
+                <i class="fas fa-file-excel me-2"></i>Export to Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filter Options</h5>
+        </div>
+        <div class="card-body">
+            <form asp-action="GradeSummary" method="get">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Grading Period:</label>
+                        <select name="period" asp-for="FilterPeriod" asp-items="Html.GetEnumSelectList<GradingPeriod>()" class="form-select">
+                            <option value="">All Periods</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Section:</label>
+                        <select name="sectionId" asp-for="FilterSectionId" asp-items="ViewBag.Sections" class="form-select">
+                            <option value="">All Sections</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search me-1"></i>Filter
+                        </button>
+                        <a asp-action="GradeSummary" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Alert Messages -->
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle"></i> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <!-- Sections Loop -->
+    @if (Model.Sections.Any())
+    {
+        @foreach (var section in Model.Sections)
+        {
+            <div class="card mb-4">
+                <div class="card-header bg-dark text-white">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-0">
+                                <i class="fas fa-graduation-cap me-2"></i>@(section.SectionName)
+                                <small class="ms-2">(@(section.SchoolYear))</small>
+                            </h4>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="badge bg-info fs-6">
+                                Students: @(section.Students.Count) | Avg: @(Math.Round(section.SectionAverage, 1))%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    @if (section.Students.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover mb-0">
+                                <thead class="table-secondary">
+                                    <tr>
+                                        <th class="sticky-left">Student #</th>
+                                        <th class="sticky-left">Student Name</th>
+                                        
+                                        @foreach (var activityName in section.ActivityNames)
+                                        {
+                                            <th class="text-center" title="@activityName">
+                                                @activityName<br/>
+                                                <small class="text-muted">Points / %</small>
+                                            </th>
+                                        }
+                                        
+                                        <th class="text-center bg-light">Total Points</th>
+                                        <th class="text-center bg-light">Overall %</th>
+                                        <th class="text-center bg-light">Grade</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var student in section.Students)
+                                    {
+                                        <tr class="@GetGradeClass(student.OverallPercentage)">
+                                            <td class="sticky-left">@student.StudentNumber</td>
+                                            <td class="sticky-left">
+                                                <a asp-action="StudentProfile" asp-route-id="@student.StudentId" class="text-decoration-none">
+                                                    <i class="fas fa-user me-1"></i>@student.StudentFullName
+                                                </a>
+                                            </td>
+                                            
+                                            @foreach (var activityName in section.ActivityNames)
+                                            {
+                                                var activity = student.Activities.FirstOrDefault(a => a.ActivityName == activityName);
+                                                <td class="text-center">
+                                                    @if (activity != null)
+                                                    {
+                                                        <div class="d-flex flex-column">
+                                                            <span class="fw-bold">@activity.Points / @activity.MaxPoints</span>
+                                                            <span class="small">
+                                                                @Math.Round(activity.Percentage, 1)%
+                                                                <span class="badge @GetStatusBadgeClass(activity.Status) ms-1" style="font-size: 0.6em;">
+                                                                    @activity.Status
+                                                                </span>
+                                                            </span>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">-</span>
+                                                    }
+                                                </td>
+                                            }
+                                            
+                                            <td class="text-center bg-light fw-bold">
+                                                @student.TotalPoints / @student.TotalMaxPoints
+                                            </td>
+                                            <td class="text-center bg-light fw-bold">
+                                                @Math.Round(student.OverallPercentage, 1)%
+                                            </td>
+                                            <td class="text-center bg-light">
+                                                <span class="badge bg-primary">@student.OverallGrade</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <a asp-action="StudentProfile" asp-route-id="@student.StudentId" class="btn btn-sm btn-outline-primary" title="View Profile">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="fas fa-users text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3">No students found in this section.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-chart-line text-muted" style="font-size: 4rem;"></i>
+                <h4 class="mt-3 text-muted">No Data Available</h4>
+                <p class="text-muted">No grade data found matching your criteria.</p>
+                <a asp-action="Records" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-2"></i>Go to Records
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        /* Grade summary specific styles */
+        .sticky-left {
+            position: sticky;
+            left: 0;
+            background-color: white;
+            z-index: 10;
+            border-right: 2px solid #dee2e6;
+            min-width: 150px;
+        }
+        
+        .table-responsive {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .table {
+            min-width: 100%;
+            table-layout: auto;
+        }
+        
+        .table th {
+            vertical-align: middle;
+            white-space: nowrap;
+            padding: 0.5rem 0.25rem;
+            font-size: 0.875rem;
+        }
+        
+        .table td {
+            vertical-align: middle;
+            padding: 0.5rem 0.25rem;
+            white-space: nowrap;
+        }
+        
+        /* Compact activity columns */
+        .table th:not(.sticky-left),
+        .table td:not(.sticky-left) {
+            min-width: 120px;
+            max-width: 150px;
+        }
+        
+        /* Summary columns slightly wider */
+        .bg-light {
+            min-width: 100px;
+        }
+        
+        @@media (max-width: 768px) {
+            .sticky-left {
+                position: static;
+                min-width: 120px;
+            }
+            
+            .table th, .table td {
+                min-width: 80px;
+                font-size: 0.8rem;
+                padding: 0.25rem;
+            }
+        }
+        
+        @@media (min-width: 1400px) {
+            .table th, .table td {
+                padding: 0.75rem 0.5rem;
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        // Add tooltips
+        $(document).ready(function() {
+            $('[title]').tooltip();
+        });
+        
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            $('.alert').fadeOut('slow');
+        }, 5000);
+    </script>
+}
