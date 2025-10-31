@@ -1,0 +1,274 @@
+@using elective_2_gradesheet.Data.Entities
+@model elective_2_gradesheet.Models.ActivityTemplateCreateViewModel
+@{
+    ViewData["Title"] = "Create Activity Template";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-plus"></i> Create Activity Template</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> Back to List
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form asp-action="Create">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label asp-for="Name" class="form-label"></label>
+                                <input asp-for="Name" class="form-control" placeholder="Enter activity template name" />
+                                <span asp-validation-for="Name" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label asp-for="MaxPoints" class="form-label"></label>
+                                <input asp-for="MaxPoints" class="form-control" />
+                                <span asp-validation-for="MaxPoints" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="SectionId" class="form-label"></label>
+                                <select asp-for="SectionId" class="form-select" asp-items="ViewBag.Sections">
+                                    <option value="">Select a section</option>
+                                </select>
+                                <span asp-validation-for="SectionId" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label asp-for="Period" class="form-label"></label>
+                                <select asp-for="Period" class="form-select" asp-items="Html.GetEnumSelectList<GradingPeriod>()">
+                                    <option value="">Select a period</option>
+                                </select>
+                                <span asp-validation-for="Period" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Tag" class="form-label"></label>
+                        <input asp-for="Tag" class="form-control" placeholder="Optional tag (e.g., Assignment, Project, Lab)" />
+                        <span asp-validation-for="Tag" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label asp-for="Description" class="form-label"></label>
+                        <textarea asp-for="Description" class="form-control" rows="3" placeholder="Optional description of the activity template"></textarea>
+                        <span asp-validation-for="Description" class="text-danger"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label asp-for="RubricJson" class="form-label mb-0"></label>
+                            <div>
+                                <button type="button" id="loadSampleRubric" class="btn btn-sm btn-outline-info me-2">
+                                    <i class="fas fa-magic"></i> Load Sample
+                                </button>
+                                <button type="button" id="formatJson" class="btn btn-sm btn-outline-secondary me-2">
+                                    <i class="fas fa-indent"></i> Format
+                                </button>
+                                <button type="button" id="validateRubric" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-check-circle"></i> Validate
+                                </button>
+                            </div>
+                        </div>
+                        <textarea asp-for="RubricJson" class="form-control font-monospace" rows="15" placeholder="Enter rubric JSON or click 'Load Sample' for an example"></textarea>
+                        <span asp-validation-for="RubricJson" class="text-danger"></span>
+                        <div id="rubricValidationFeedback" class="mt-2"></div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label"></label>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Create Template
+                        </button>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> Rubric Guidelines</h5>
+            </div>
+            <div class="card-body">
+                <h6>Rubric Structure:</h6>
+                <ul class="small">
+                    <li>Must be a JSON array of rubric items</li>
+                    <li>Total points must equal 100</li>
+                    <li>Each item needs: name, points, keywords, files</li>
+                </ul>
+                
+                <h6>File Patterns:</h6>
+                <ul class="small">
+                    <li><code>*.cs</code> - C# files</li>
+                    <li><code>*.java</code> - Java files</li>
+                    <li><code>*.py</code> - Python files</li>
+                    <li><code>*Test*.cs</code> - C# test files</li>
+                    <li><code>**&#47;src&#47;**</code> - Any files in src directory</li>
+                </ul>
+
+                <h6>Keywords:</h6>
+                <p class="small">Use specific code patterns or terms that should be present in the student's code.</p>
+                
+                <div class="alert alert-info small">
+                    <strong>Tip:</strong> Click "Load Sample" to see a complete example rubric structure.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const rubricTextarea = document.getElementById('RubricJson');
+            const validateButton = document.getElementById('validateRubric');
+            const formatButton = document.getElementById('formatJson');
+            const loadSampleButton = document.getElementById('loadSampleRubric');
+            const feedbackDiv = document.getElementById('rubricValidationFeedback');
+
+            // Load sample rubric
+            loadSampleButton.addEventListener('click', async function() {
+                try {
+                    const response = await fetch('/ActivityTemplate/GetSampleRubric');
+                    if (response.ok) {
+                        const sampleJson = await response.text();
+                        rubricTextarea.value = sampleJson;
+                        showFeedback('Sample rubric loaded!', 'success');
+                    }
+                } catch (error) {
+                    // Fallback sample if endpoint doesn't exist yet
+                    const sampleRubric = [
+                        {
+                            "name": "Class Definition",
+                            "points": 20,
+                            "keywords": ["public class", "class"],
+                            "files": ["*.cs", "*.java", "*.py"]
+                        },
+                        {
+                            "name": "Method Implementation",
+                            "points": 25,
+                            "keywords": ["public", "method", "function", "def"],
+                            "files": ["*.cs", "*.java", "*.py", "*.js"]
+                        },
+                        {
+                            "name": "Error Handling",
+                            "points": 20,
+                            "keywords": ["try", "catch", "exception", "error"],
+                            "files": ["*.cs", "*.java", "*.py", "*.js"]
+                        },
+                        {
+                            "name": "Documentation",
+                            "points": 15,
+                            "keywords": ["///", "/**", "#", "comment"],
+                            "files": ["*.cs", "*.java", "*.py", "*.js", "*.md"]
+                        },
+                        {
+                            "name": "Testing",
+                            "points": 20,
+                            "keywords": ["test", "assert", "expect", "should"],
+                            "files": ["*Test*.cs", "*test*.java", "test_*.py", "*.test.js"]
+                        }
+                    ];
+                    rubricTextarea.value = JSON.stringify(sampleRubric, null, 4);
+                    showFeedback('Sample rubric loaded!', 'success');
+                }
+            });
+
+            // Format JSON
+            formatButton.addEventListener('click', function() {
+                try {
+                    const json = JSON.parse(rubricTextarea.value);
+                    rubricTextarea.value = JSON.stringify(json, null, 4);
+                    showFeedback('JSON formatted successfully!', 'success');
+                } catch (error) {
+                    showFeedback('Invalid JSON format. Please correct and try again.', 'danger');
+                }
+            });
+
+            // Validate rubric
+            validateButton.addEventListener('click', async function() {
+                const json = rubricTextarea.value.trim();
+                if (!json) {
+                    showFeedback('Please enter rubric JSON to validate.', 'warning');
+                    return;
+                }
+
+                try {
+                    const rubric = JSON.parse(json);
+                    let totalPoints = 0;
+                    let isValid = true;
+                    let errors = [];
+
+                    if (!Array.isArray(rubric)) {
+                        errors.push('Rubric must be an array');
+                        isValid = false;
+                    } else {
+                        for (let i = 0; i < rubric.length; i++) {
+                            const item = rubric[i];
+                            if (!item.name || !item.points || !item.keywords || !item.files) {
+                                errors.push(`Item ${i + 1}: Missing required properties (name, points, keywords, files)`);
+                                isValid = false;
+                            } else {
+                                totalPoints += parseInt(item.points);
+                                
+                                if (!Array.isArray(item.keywords) || item.keywords.length === 0) {
+                                    errors.push(`Item ${i + 1}: Keywords must be a non-empty array`);
+                                    isValid = false;
+                                }
+                                
+                                if (!Array.isArray(item.files) || item.files.length === 0) {
+                                    errors.push(`Item ${i + 1}: Files must be a non-empty array`);
+                                    isValid = false;
+                                }
+                            }
+                        }
+                        
+                        if (totalPoints !== 100) {
+                            errors.push(`Total points must equal 100 (current: ${totalPoints})`);
+                            isValid = false;
+                        }
+                    }
+
+                    if (isValid) {
+                        showFeedback(`Valid rubric! Total points: ${totalPoints}`, 'success');
+                    } else {
+                        showFeedback('Validation errors:<br>• ' + errors.join('<br>• '), 'danger');
+                    }
+                } catch (error) {
+                    showFeedback('Invalid JSON format: ' + error.message, 'danger');
+                }
+            });
+
+            function showFeedback(message, type) {
+                feedbackDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+                setTimeout(() => {
+                    feedbackDiv.innerHTML = '';
+                }, 5000);
+            }
+        });
+    </script>
+}

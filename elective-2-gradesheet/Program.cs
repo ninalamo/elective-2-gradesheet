@@ -1,22 +1,25 @@
-using elective_2_gradesheet.Data;
+using elective_2_gradesheet.Configuration;
 using elective_2_gradesheet.Services;
-using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddControllersWithViews();
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-
-builder.Services.AddScoped<IGradeService, GradeService>();
+// Configure database provider based on settings
+DatabaseConfiguration.ConfigureServices(builder.Services, builder.Configuration);
 builder.Services.AddScoped<ICsvParsingService, CsvParsingService>(); 
+builder.Services.AddScoped<IGitService, GitService>();
+builder.Services.AddScoped<IActivityTemplateService, ActivityTemplateService>();
+builder.Services.AddScoped<IRubricGenerationService, RubricGenerationService>();
+builder.Services.AddScoped<RepositoryService>();
+builder.Services.AddScoped<RubricScoringService>();
 
 
 var app = builder.Build();
+
+// Initialize database
+await DatabaseConfiguration.InitializeDatabaseAsync(app.Services, app.Configuration);
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

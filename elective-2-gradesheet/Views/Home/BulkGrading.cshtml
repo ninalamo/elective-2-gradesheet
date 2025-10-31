@@ -1,0 +1,454 @@
+@model elective_2_gradesheet.Models.BulkGradingViewModel
+
+@{
+    ViewData["Title"] = "Bulk Grading";
+}
+
+@functions {
+    string GetStatusBadgeClass(string? status)
+    {
+        if (string.IsNullOrEmpty(status)) return "bg-secondary";
+        return status.ToLower() switch
+        {
+            "turned in" => "bg-success",
+            "turned in late" => "bg-warning",
+            "completed" => "bg-success",
+            "graded" => "bg-primary",
+            "returned" => "bg-info",
+            "not turned in" => "bg-danger",
+            "viewed" => "bg-info",
+            "missing" => "bg-secondary",
+            "not started" => "bg-warning",
+            "error" => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1>@ViewData["Title"]</h1>
+            <p class="lead">Process individual student GitHub repository submissions</p>
+            
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+            
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i> @TempData["ErrorMessage"]
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Select Section and Activity</h5>
+        </div>
+        <div class="card-body">
+            <form asp-action="BulkGrading" method="get">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="sectionId">Section:</label>
+                            <select name="sectionId" class="form-select" required onchange="this.form.submit()">
+                                <option value="">Select a Section</option>
+                                @if (Model.Sections != null)
+                                {
+                                    @foreach (var sectionItem in Model.Sections)
+                                    {
+                                        <option value="@(sectionItem.Value)" selected="@(Model.SectionId.ToString() == sectionItem.Value)">
+                                            @(sectionItem.Text)
+                                        </option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="activityTemplateId">Activity/Assignment:</label>
+                            <select name="activityTemplateId" class="form-select" @(Model.SectionId == null ? "disabled" : "") 
+                                   onchange="this.form.submit()">
+                                <option value="">Select an Activity</option>
+                                @if (Model.ActivityTemplates != null)
+                                {
+                                    @foreach (var activityItem in Model.ActivityTemplates)
+                                    {
+                                        <option value="@(activityItem.Value)" selected="@(Model.ActivityTemplateId.ToString() == activityItem.Value)">
+                                            @(activityItem.Text)
+                                        </option>
+                                    }
+                                }
+                            </select>
+                            @if (Model.SectionId == null)
+                            {
+                                <small class="text-muted">Select a section first</small>
+                            }
+                        </div>
+                    </div>
+                </div>
+                
+                @if (Model.ActivityTemplateId != null && !string.IsNullOrEmpty(Model.ActivityTemplateName))
+                {
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <strong>Activity:</strong> @Model.ActivityTemplateName
+                                @if (Model.Students?.Any() == true)
+                                {
+                                    <span class="badge bg-success ms-2">Has Rubric - Ready for Processing</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger ms-2">No Rubric - Cannot Process</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+                
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="searchTerm"><i class="fas fa-search"></i> Search Student:</label>
+                            <input type="text" name="searchTerm" id="searchTerm" class="form-control" 
+                                   value="@Model.SearchTerm" placeholder="Search by name or student number"
+                                   onchange="this.form.submit()">
+                            <small class="text-muted">Search by student name or student number</small>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <label><i class="fas fa-filter"></i> Filter by Status:</label>
+                            <div class="row mt-2">
+                                <div class="col-md-8">
+                                    <div class="d-flex flex-wrap gap-3">
+                                        @if (Model.StatusOptions != null)
+                                        {
+                                            @foreach (var statusOption in Model.StatusOptions)
+                                            {
+                                                <div class="form-check">
+                                                    <input class="form-check-input status-filter-checkbox" 
+                                                           type="checkbox" 
+                                                           name="statusFilters" 
+                                                           value="@statusOption.Value" 
+                                                           id="status_@statusOption.Value.Replace(" ", "_")" 
+                                                           @(statusOption.Selected ? "checked" : "")
+                                                           onchange="this.form.submit()">
+                                                    <label class="form-check-label" for="status_@statusOption.Value.Replace(" ", "_")">
+                                                        @statusOption.Text
+                                                    </label>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                    <small class="text-muted">Select which statuses to show (leave unchecked to show all)</small>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               name="includeGraded" 
+                                               value="true" 
+                                               id="includeGraded" 
+                                               @(Model.IncludeGraded ? "checked" : "")
+                                               onchange="this.form.submit()">
+                                        <label class="form-check-label" for="includeGraded">
+                                            <i class="fas fa-check-circle text-success"></i> Include Graded
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">Check to include students with 'Graded' status</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Students Table -->
+    @if (Model.Students?.Any() == true)
+    {
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    Students 
+                    <span class="badge bg-primary">@Model.Students.Count(s => s.IsVisible) visible</span>
+                    @if (Model.Students.Count(s => !s.IsVisible) > 0)
+                    {
+                        <span class="badge bg-secondary ms-1">@Model.Students.Count(s => !s.IsVisible) hidden</span>
+                    }
+                </h5>
+                <p class="text-muted mb-0">Enter GitHub repository URLs and click "Process" to automatically clone, scan, score, and save grades</p>
+            </div>
+            <div class="card-body">
+                <form asp-action="ProcessBulkGrading" method="post">
+                    <input type="hidden" name="ActivityTemplateId" value="@Model.ActivityTemplateId" />
+                    <input type="hidden" name="SectionId" value="@Model.SectionId" />
+                    
+                    <div class="mb-3">
+                        <button type="button" onclick="toggleAllCheckboxes(true)" class="btn btn-outline-primary btn-sm me-2">
+                            <i class="fas fa-check-square"></i> Select All
+                        </button>
+                        <button type="button" onclick="toggleAllCheckboxes(false)" class="btn btn-outline-secondary btn-sm me-2">
+                            <i class="far fa-square"></i> Deselect All
+                        </button>
+                        <button type="submit" class="btn btn-success" id="processBtn">
+                            <i class="fas fa-play"></i> Process Selected Students
+                        </button>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th width="40">Select</th>
+                                <th>Student Number</th>
+                                <th>Student Name</th>
+                                <th>Current Status</th>
+                                <th>Current Points</th>
+                                <th width="350">GitHub Repository URL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Students.Count; i++)
+                            {
+                                var student = Model.Students[i];
+                                var hasNonZeroGrade = student.HasNonZeroGrade;
+                                var isVisible = student.IsVisible;
+                                var isGraded = string.Equals(student.CurrentStatus, "Graded", StringComparison.OrdinalIgnoreCase);
+                                
+                                <tr @(isVisible ? "" : "style=display:none") @(isGraded ? "class=table-secondary" : "")>
+                                    <td>
+                                        <input type="checkbox" 
+                                               name="SelectedStudents[@i].IsSelected" 
+                                               value="true" 
+                                               class="form-check-input student-checkbox" 
+                                               @(student.IsSelected && !isGraded ? "checked" : "") 
+                                               @(isGraded ? "disabled" : "")
+                                               @(isVisible ? "" : "style=display:none") />
+                                        <input type="hidden" name="SelectedStudents[@i].StudentId" value="@student.StudentId" />
+                                    </td>
+                                    <td>
+                                        <strong>@student.StudentNumber</strong>
+                                    </td>
+                                    <td>
+                                        <a href="@Url.Action("StudentProfile", "Home", new { id = student.StudentId })" 
+                                           target="_blank" 
+                                           class="text-decoration-none fw-bold">
+                                            @student.StudentName
+                                            <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.8em;"></i>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(student.CurrentStatus)">
+                                            @(student.CurrentStatus ?? "No Status")
+                                        </span>
+                                    </td>
+                                    <td>@(student.CurrentPoints ?? 0)</td>
+                                    <td>
+                                        <input type="url" 
+                                               class="form-control form-control-sm" 
+                                               name="SelectedStudents[@i].RepositoryUrl"
+                                               value="@student.RepositoryUrl"
+                                               placeholder="https://github.com/user/repo"
+                                               pattern="https://github\.com/.+" 
+                                               title="Please enter a valid GitHub repository URL"
+                                               @(isGraded ? "disabled readonly" : "")
+                                               id="repo-@student.StudentId" />
+                                        <small class="text-muted d-block">@(isGraded ? "Already graded - cannot be modified" : "GitHub repository URL (required for processing)")</small>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-3">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>How it works:</strong> Select students, enter their GitHub repository URLs, and click "Process Selected Students". 
+                        The system will automatically clone repositories, scan the code against the rubric, calculate scores, and save all results to the database.
+                        <br><br>
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Note:</strong> This will process all selected students at once. The operation may take a few minutes depending on the number of repositories.
+                    </div>
+                </div>
+            </form>
+            </div>
+        </div>
+    }
+
+</div>
+
+<!-- Processing Results Modal -->
+<div class="modal fade" id="resultsModal" tabindex="-1" aria-labelledby="resultsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resultsModalLabel">
+                    <i class="fas fa-chart-line"></i> Processing Results Summary
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="processingResults">
+                    <!-- Results will be populated here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="window.location.reload()">
+                    <i class="fas fa-refresh"></i> Refresh Page
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function toggleAllCheckboxes(select) {
+            const checkboxes = document.querySelectorAll('.student-checkbox:not(:disabled)');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = select;
+            });
+        }
+        
+        // Simple form validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form[action*="ProcessBulkGrading"]');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked:not(:disabled)');
+                    if (checkedBoxes.length === 0) {
+                        e.preventDefault();
+                        alert('Please select at least one student to process.');
+                        return false;
+                    }
+                    
+                    // Check for valid repository URLs on selected students
+                    let hasValidRepo = false;
+                    let missingRepos = [];
+                    
+                    checkedBoxes.forEach(checkbox => {
+                        const row = checkbox.closest('tr');
+                        const repoInput = row.querySelector('input[type="url"]');
+                        const studentName = row.querySelector('td:nth-child(2)').textContent.trim();
+                        
+                        if (repoInput.value.trim() && repoInput.checkValidity()) {
+                            hasValidRepo = true;
+                        } else {
+                            missingRepos.push(studentName);
+                        }
+                    });
+                    
+                    if (!hasValidRepo) {
+                        e.preventDefault();
+                        alert('Please enter valid GitHub repository URLs for selected students.');
+                        return false;
+                    }
+                    
+                    if (missingRepos.length > 0) {
+                        const proceed = confirm(`The following students have no valid repository URL:\n\n${missingRepos.join('\n')}\n\nDo you want to continue processing only students with valid repository URLs?`);
+                        if (!proceed) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    }
+                    
+                    // Show loading state
+                    const submitBtn = form.querySelector('#processBtn');
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+                    
+                    return true; // Allow form submission
+                });
+            }
+        });
+        
+        // Show processing results modal if available
+        @if (TempData["ProcessingResults"] != null)
+        {
+            @:showResultsModal(@Html.Raw(TempData["ProcessingResults"]));
+        }
+        
+        function showResultsModal(results) {
+            const successCount = results.ProcessedCount;
+            const errorCount = results.ErrorCount;
+            const totalCount = results.TotalCount;
+            
+            // Count skipped entries
+            const skippedCount = results.Results.filter(r => r.Message.includes('Skipped!')).length;
+            
+            let html = `
+                <div class="alert ${successCount > 0 ? 'alert-success' : 'alert-danger'}">
+                    <h6><i class="fas fa-chart-pie"></i> Summary</h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Processed:</strong> ${successCount}/${totalCount}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Successful:</strong> ${successCount}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Skipped:</strong> ${skippedCount}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Errors:</strong> ${errorCount}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6><i class="fas fa-list"></i> Detailed Results</h6>
+                    <div class="list-group">
+            `;
+            
+            results.Results.forEach(function(result) {
+                let iconClass, bgClass;
+                
+                if (result.Message.includes('Skipped!')) {
+                    iconClass = 'fa-exclamation-triangle text-warning';
+                    bgClass = 'list-group-item-warning';
+                } else if (result.IsSuccess) {
+                    iconClass = 'fa-check text-success';
+                    bgClass = 'list-group-item-success';
+                } else {
+                    iconClass = 'fa-times text-danger';
+                    bgClass = 'list-group-item-danger';
+                }
+                
+                html += `
+                    <div class="list-group-item ${bgClass}">
+                        <i class="fas ${iconClass} me-2"></i>${result.Message}
+                    </div>
+                `;
+            });
+            
+            html += `
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('processingResults').innerHTML = html;
+            
+            // Show the modal
+            var modal = new bootstrap.Modal(document.getElementById('resultsModal'));
+            modal.show();
+        }
+    </script>
+}
+
+    </script>
+}

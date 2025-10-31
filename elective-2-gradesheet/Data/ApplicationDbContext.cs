@@ -11,7 +11,8 @@ namespace elective_2_gradesheet.Data
         }
 
         public DbSet<Student> Students { get; set; }
-        public DbSet<Activity> Activities { get; set; }
+        public DbSet<ActivityTemplate> ActivityTemplates { get; set; }
+        public DbSet<StudentSubmission> StudentSubmissions { get; set; }
         public DbSet<Section> Sections { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -25,6 +26,18 @@ namespace elective_2_gradesheet.Data
 
             modelBuilder.Entity<Section>()
                 .HasIndex(s => new { s.Name, s.SchoolYear })
+                .IsUnique();
+
+            // Prevent multiple cascade paths: disable DB-level cascade from ActivityTemplate -> StudentSubmissions
+            modelBuilder.Entity<StudentSubmission>()
+                .HasOne(ss => ss.ActivityTemplate)
+                .WithMany(at => at.StudentSubmissions)
+                .HasForeignKey(ss => ss.ActivityTemplateId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Add unique constraint on ActivityTemplate to prevent duplicates
+            modelBuilder.Entity<ActivityTemplate>()
+                .HasIndex(at => new { at.SectionId, at.Period, at.Name })
                 .IsUnique();
         }
     }

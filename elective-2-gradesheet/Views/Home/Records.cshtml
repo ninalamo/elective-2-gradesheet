@@ -6,10 +6,9 @@
     ViewData["Title"] = "All Grade Records";
 }
 
-<div class="container mt-5">
+<div class="container-fluid mt-5">
     <h2 class="mb-4 text-primary text-center"><i class="fas fa-database me-2"></i> All Grade Records</h2>
 
-    <!-- Filter Form -->
     <div class="card shadow-sm mb-4 rounded-lg">
         <div class="card-header text-white py-2 rounded-top-lg" style="background-color: #03A9F4;">
             <h5 class="mb-0"><i class="fas fa-filter me-2"></i> Filter Records</h5>
@@ -43,69 +42,46 @@
         </div>
     </div>
 
-    <!-- Student Records Display -->
     @if (Model.StudentGroups.Any())
     {
-        @foreach (var studentGroup in Model.StudentGroups)
-        {
-            <div class="card mb-3 shadow-sm rounded-lg">
-                <div class="card-header text-white py-2 rounded-top-lg d-flex justify-content-between align-items-center"
-                     style="background-color: #36454F;">
-                    <h5 class="mb-0">
-                        <!-- Student Name is now the clickable link -->
-                        <a asp-action="StudentProfile" asp-route-id="@studentGroup.StudentId" class="text-white text-decoration-none">
-                            <i class="fas fa-user-circle me-2"></i> @studentGroup.StudentFullName - @studentGroup.StudentNumber
-                        </a>
-                        <span class="badge bg-secondary rounded-pill px-2 py-1 ms-2">@studentGroup.SectionName</span>
-                    </h5>
-                    <!-- Collapse toggle is now a separate icon -->
-                    <button class="btn btn-link text-white p-0 ms-auto" type="button" data-bs-toggle="collapse"
-                            data-bs-target="#collapseStudent_@studentGroup.StudentId" aria-expanded="false"
-                            aria-controls="collapseStudent_@studentGroup.StudentId" style="text-decoration: none;">
-                        <i class="fas fa-chevron-down collapse-icon"></i>
-                    </button>
-                </div>
-                <div id="collapseStudent_@studentGroup.StudentId" class="collapse">
-                    <div class="card-body p-0">
-                        @if (studentGroup.ActivitiesByPeriod.Any())
+        <div class="card shadow-sm rounded-lg">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="text-white" style="background-color: #36454F;">
+                        <tr>
+                            <th class="ps-3">Student</th>
+                            <th>Student Number</th>
+                            <th>Section</th>
+                            <th>Total Activities</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var studentGroup in Model.StudentGroups)
                         {
-                            @foreach (var periodGroup in studentGroup.ActivitiesByPeriod)
-                            {
-                                <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
-                                    <strong class="text-dark">Period: @periodGroup.Key</strong>
-                                    <span class="badge bg-primary rounded-pill px-2 py-1">Total Activities: @periodGroup.Value.Count</span>
-                                </div>
-                                <div class="table-responsive">
-                                    <table class="table table-sm table-hover mb-0">
-                                        <thead class="bg-light">
-                                            <tr>
-                                                <th class="ps-3">Activity Name</th>
-                                                <th>Status</th>
-                                                <th>Score</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var item in periodGroup.Value)
-                                            {
-                                                <tr class="@(item.Status == "Missing" ? "table-warning" : "")">
-                                                    <td class="ps-3">@item.ActivityName</td>
-                                                    <td>@item.Status</td>
-                                                    <td>@item.Points / @item.MaxPoints</td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
+                            <tr class="clickable-row" style="cursor: pointer;">
+                                <td class="ps-3">
+                                    <a asp-action="StudentProfile" asp-route-id="@studentGroup.StudentId" 
+                                       class="text-decoration-none student-profile-link fw-semibold" 
+                                       data-student-id="@studentGroup.StudentId">
+                                        <i class="fas fa-user-circle me-2 text-primary"></i>@studentGroup.StudentFullName
+                                    </a>
+                                </td>
+                                <td>@studentGroup.StudentNumber</td>
+                                <td>
+                                    <span class="badge bg-secondary rounded-pill px-2 py-1">@studentGroup.SectionName</span>
+                                </td>
+                                <td>
+                                    @{
+                                        var totalActivities = studentGroup.ActivitiesByPeriod.SelectMany(p => p.Value).Count();
+                                    }
+                                    <span class="badge bg-primary rounded-pill px-2 py-1">@totalActivities</span>
+                                </td>
+                            </tr>
                         }
-                        else
-                        {
-                            <p class="p-3 text-muted text-center">No activities found for the selected filters for this student.</p>
-                        }
-                    </div>
-                </div>
+                    </tbody>
+                </table>
             </div>
-        }
+        </div>
     }
     else
     {
@@ -114,7 +90,6 @@
         </div>
     }
 
-    <!-- Pagination Controls -->
     <nav aria-label="Page navigation" class="mt-4">
         <ul class="pagination justify-content-center">
             @{
@@ -148,25 +123,27 @@
 </div>
 
 @section Scripts {
+    <style>
+        .clickable-row:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .student-profile-link:hover {
+            color: #0d6efd !important;
+        }
+    </style>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Add event listeners for collapse icons to rotate
-            var collapseToggles = document.querySelectorAll('.card-header button[data-bs-toggle="collapse"]');
-            collapseToggles.forEach(function(toggle) {
-                var collapseElement = document.querySelector(toggle.getAttribute('data-bs-target'));
-                var icon = toggle.querySelector('.collapse-icon');
-
-                // Initial state check (if you want some to be open by default)
-                if (collapseElement.classList.contains('show')) {
-                    icon.classList.add('fa-rotate-180');
-                }
-
-                collapseElement.addEventListener('show.bs.collapse', function () {
-                    icon.classList.add('fa-rotate-180');
-                });
-
-                collapseElement.addEventListener('hide.bs.collapse', function () {
-                    icon.classList.remove('fa-rotate-180');
+            // Make entire table rows clickable
+            document.querySelectorAll('.clickable-row').forEach(row => {
+                row.addEventListener('click', function(e) {
+                    // Only trigger if the click wasn't on a link
+                    if (e.target.tagName !== 'A' && !e.target.closest('a')) {
+                        const link = this.querySelector('.student-profile-link');
+                        if (link) {
+                            window.location.href = link.href;
+                        }
+                    }
                 });
             });
         });

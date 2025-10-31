@@ -1,0 +1,111 @@
+{
+    "name": "Web Systems Basic C# Assessment",
+    "rubric": [
+        {
+            "name": "Variables and Data Types",
+            "points": 10,
+            "keywords": [
+                "string studentName",
+                "int score",
+                "bool isPassed",
+                "DateTime examDate",
+                "decimal tuitionFee",
+                "ViewBag"
+            ],
+            "files": [
+                "Controllers/*.cs",
+                "Views/*/*.cshtml"
+            ]
+        },
+        {
+            "name": "Operators and Control Structures",
+            "points": 10,
+            "keywords": [
+                "score >= 90",
+                "score >= 80",
+                "score >= 75",
+                "isPassed == true",
+                "if",
+                "else"
+            ],
+            "files": [
+                "Controllers/*.cs",
+                "Views/*/*.cshtml"
+            ]
+        },
+        {
+            "name": "Loops and Collections",
+            "points": 10,
+            "keywords": [
+                "string[] courses",
+                "foreach",
+                "Web Systems",
+                "OOP",
+                "DBMS",
+                "UI/UX",
+                "Networking"
+            ],
+            "files": [
+                "Controllers/*.cs",
+                "Views/*/*.cshtml"
+            ]
+        },
+        {
+            "name": "Methods Implementation",
+            "points": 10,
+            "keywords": [
+                "private decimal ComputeNetFee",
+                "tuition * discountPercent",
+                "ViewBag.NetFee"
+            ],
+            "files": [
+                "Controllers/*.cs"
+            ]
+        },
+        {
+            "name": "Student Class Definition",
+            "points": 10,
+            "keywords": [
+                "public class Student",
+                "public string Name",
+                "public int Age",
+                "public string Course",
+                "ViewBag.Student"
+            ],
+            "files": [
+                "Models/*.cs",
+                "Controllers/*.cs"
+            ]
+        },
+        {
+            "name": "List of Students Implementation",
+            "points": 20,
+            "keywords": [
+                "List<Student>",
+                "ViewBag.Students",
+                "foreach",
+                "<table",
+                "<tr",
+                "<td"
+            ],
+            "files": [
+                "Controllers/*.cs",
+                "Views/*/*.cshtml"
+            ]
+        },
+        {
+            "name": "About Me Page",
+            "points": 30,
+            "keywords": [
+                "public IActionResult AboutMe",
+                "AboutMe.cshtml",
+                "My Expectations",
+                "Course & Year"
+            ],
+            "files": [
+                "Controllers/*.cs",
+                "Views/*/AboutMe.cshtml"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,271 @@
+@model elective_2_gradesheet.Data.Entities.ActivityTemplate
+@{
+    ViewData["Title"] = "Activity Template Details";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-eye"></i> Activity Template Details</h2>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+            <i class="fas fa-edit"></i> Edit
+        </a>
+        @if (!string.IsNullOrEmpty(Model.RubricJson))
+        {
+            <a asp-action="RubricEditor" asp-route-id="@Model.Id" class="btn btn-success">
+                <i class="fas fa-list-check"></i> Edit Rubric
+            </a>
+        }
+        <a asp-action="Index" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to List
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-3">Name:</dt>
+                    <dd class="col-sm-9">@Model.Name</dd>
+
+                    <dt class="col-sm-3">Section:</dt>
+                    <dd class="col-sm-9">@Model.Section?.Name</dd>
+
+                    <dt class="col-sm-3">Period:</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge bg-secondary">@Model.Period.ToString()</span>
+                    </dd>
+
+                    <dt class="col-sm-3">Max Points:</dt>
+                    <dd class="col-sm-9">@Model.MaxPoints.ToString("F1")</dd>
+
+                    @if (!string.IsNullOrEmpty(Model.Tag))
+                    {
+                        <dt class="col-sm-3">Tag:</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge bg-info text-dark">@Model.Tag</span>
+                        </dd>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model.Description))
+                    {
+                        <dt class="col-sm-3">Description:</dt>
+                        <dd class="col-sm-9">@Model.Description</dd>
+                    }
+
+                    <dt class="col-sm-3">Status:</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </dd>
+
+                    <dt class="col-sm-3">Created:</dt>
+                    <dd class="col-sm-9">@Model.CreatedDate.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                    <dt class="col-sm-3">Last Updated:</dt>
+                    <dd class="col-sm-9">@Model.UpdatedDate.ToString("yyyy-MM-dd HH:mm")</dd>
+
+                    <dt class="col-sm-3">Rubric:</dt>
+                    <dd class="col-sm-9">
+                        @if (!string.IsNullOrEmpty(Model.RubricJson))
+                        {
+                            <span class="badge bg-success">
+                                <i class="fas fa-check"></i> Has Rubric
+                            </span>
+                            <button class="btn btn-sm btn-outline-info ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#rubricCollapse">
+                                <i class="fas fa-eye"></i> View Rubric
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">
+                                <i class="fas fa-exclamation-triangle"></i> No Rubric
+                            </span>
+                            <a asp-action="RubricEditor" asp-route-id="@Model.Id" class="btn btn-sm btn-outline-success ms-2">
+                                <i class="fas fa-plus"></i> Add Rubric
+                            </a>
+                        }
+                    </dd>
+                </dl>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.RubricJson))
+        {
+            <div class="collapse mt-3" id="rubricCollapse">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-list-check"></i> Rubric Preview</h5>
+                        <button type="button" id="formatRubricJson" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-indent"></i> Format JSON
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="rubricPreview"></div>
+                        <hr>
+                        <h6>Raw JSON:</h6>
+                        <pre class="bg-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"><code id="rubricJsonCode">@Model.RubricJson</code></pre>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-tools"></i> Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">
+                        <i class="fas fa-edit"></i> Edit Template
+                    </a>
+                    @if (!string.IsNullOrEmpty(Model.RubricJson))
+                    {
+                        <a asp-action="RubricEditor" asp-route-id="@Model.Id" class="btn btn-success">
+                            <i class="fas fa-list-check"></i> Edit Rubric
+                        </a>
+                    }
+                    else
+                    {
+                        <a asp-action="RubricEditor" asp-route-id="@Model.Id" class="btn btn-outline-success">
+                            <i class="fas fa-plus"></i> Add Rubric
+                        </a>
+                    }
+                    <form asp-action="Duplicate" asp-route-id="@Model.Id" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-outline-secondary w-100" onclick="return confirm('Create a copy of this activity template?')">
+                            <i class="fas fa-copy"></i> Duplicate Template
+                        </button>
+                    </form>
+                    <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">
+                        <i class="fas fa-trash"></i> Delete
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        @if (!string.IsNullOrEmpty(Model.RubricJson))
+        {
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Rubric Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div id="rubricStats">
+                        <p class="text-muted">Click "View Rubric" to see summary</p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const formatButton = document.getElementById('formatRubricJson');
+            const rubricCode = document.getElementById('rubricJsonCode');
+            const rubricPreview = document.getElementById('rubricPreview');
+            const rubricStats = document.getElementById('rubricStats');
+            
+            if (formatButton && rubricCode) {
+                formatButton.addEventListener('click', function() {
+                    try {
+                        const json = JSON.parse(rubricCode.textContent);
+                        rubricCode.textContent = JSON.stringify(json, null, 4);
+                    } catch (error) {
+                        alert('Invalid JSON format');
+                    }
+                });
+            }
+            
+            // Load rubric preview when collapse is shown
+            const rubricCollapse = document.getElementById('rubricCollapse');
+            if (rubricCollapse) {
+                rubricCollapse.addEventListener('shown.bs.collapse', function() {
+                    updateRubricPreview();
+                    updateRubricStats();
+                });
+            }
+            
+            function updateRubricPreview() {
+                if (!rubricPreview) return;
+                
+                try {
+                  
+                    const rubricJson = '@Html.Raw(System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(Model.RubricJson ?? ""))';
+                    if (!rubricJson) return;
+                    
+                    const rubric = JSON.parse(rubricJson);
+                    let totalPoints = 0;
+                    let html = '<div class="rubric-preview">';
+                    
+                    rubric.forEach((item, index) => {
+                        totalPoints += item.points || 0;
+                        html += `
+                            <div class="border rounded p-2 mb-2 bg-light">
+                                <div class="d-flex justify-content-between">
+                                    <strong>${item.name || 'Unnamed'}</strong>
+                                    <span class="badge bg-primary">${item.points || 0} pts</span>
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    <strong>Keywords:</strong> ${(item.keywords || []).join(', ')}<br>
+                                    <strong>Files:</strong> ${(item.files || []).join(', ')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `<div class="mt-2"><strong>Total Points: ${totalPoints}</strong></div>`;
+                    html += '</div>';
+                    
+                    rubricPreview.innerHTML = html;
+                    
+                    if (totalPoints !== 100) {
+                        rubricPreview.innerHTML += `<div class="alert alert-warning small mt-2">⚠️ Total should be 100 points</div>`;
+                    }
+                    
+                } catch (error) {
+                    rubricPreview.innerHTML = '<div class="alert alert-danger small">Invalid JSON format</div>';
+                }
+            }
+            
+            function updateRubricStats() {
+                if (!rubricStats) return;
+                
+                try {
+                    // With this line:
+                    const rubricJson = '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(Model.RubricJson ?? "")';
+                    if (!rubricJson) return;
+                    
+                    const rubric = JSON.parse(rubricJson);
+                    const totalPoints = rubric.reduce((sum, item) => sum + (item.points || 0), 0);
+                    const totalCriteria = rubric.length;
+                    const avgPointsPerCriterion = totalCriteria > 0 ? (totalPoints / totalCriteria).toFixed(1) : 0;
+                    
+                    let html = `
+                        <div class="small">
+                            <p><strong>Criteria:</strong> ${totalCriteria}</p>
+                            <p><strong>Total Points:</strong> ${totalPoints}</p>
+                            <p><strong>Avg per Criterion:</strong> ${avgPointsPerCriterion}</p>
+                        </div>
+                    `;
+                    
+                    rubricStats.innerHTML = html;
+                    
+                } catch (error) {
+                    rubricStats.innerHTML = '<div class="text-danger small">Error parsing rubric</div>';
+                }
+            }
+        });
+    </script>
+}
